@@ -245,13 +245,27 @@ export async function choose(seat: Seat, text: string | RegExp) {
   return promptChanged(seat, before)
 }
 
+/** Mana sources of the player that can still be tapped, best match for the cost first */
+export function manaSources(s: Snap): any[] {
+  const cost = String(s.prompt?.data.message ?? '').split('<')[0]
+  const colors = [...cost.matchAll(/\{([WUBRG])\}/g)].map((m) => m[1])
+  const makes = (c: any, color: string) => c.rules.join(' ').includes(`{${color}}`)
+  const sources = me(s).battlefield.filter((c: any) => c.playable && !c.tapped && c.types.includes('LAND'))
+  // XMage lets you tap anything, so pick a land that makes a color the cost still needs;
+  // for a generic cost prefer the land that is piled last (the only fully visible one)
+  const score = (c: any) => (colors.some((color) => makes(c, color)) ? 2 : colors.length === 0 ? 1 : 0)
+  return sources
+    .map((c: any, i: number) => ({ c, i }))
+    .sort((x: any, y: any) => score(y.c) - score(x.c) || y.i - x.i)
+    .map((x: any) => x.c)
+}
+
 /** Taps untapped lands until the cost is paid */
 export async function payMana(seat: Seat) {
   for (let i = 0; i < 20; i++) {
     const s = await until(seat, 'a prompt', (x) => (x.prompt && !x.answering ? x : false))
     if (s.prompt!.method !== 'GAME_PLAY_MANA') return s
-    // identical lands are piled up and only the last one of a pile is fully visible
-    const land = me(s).battlefield.findLast((c: any) => c.playable && !c.tapped && c.types.includes('LAND'))
+    const land = manaSources(s)[0]
     if (!land) throw new Error(`${seat.name}: no untapped land left to pay "${s.prompt!.data.message}"`)
     await clickId(seat, land.id)
   }

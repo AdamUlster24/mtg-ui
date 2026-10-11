@@ -66,7 +66,16 @@ export function PromptBar({ prompt, game }: { prompt: Prompt | null; game: GameV
   const waiting = !prompt || prompt.method === 'GAME_UPDATE_AND_INFORM'
   const message = prompt ? tidy(prompt.data.message ?? prompt.data.choice?.message) : 'Waiting…'
   const second = prompt ? plain(text(prompt.data.options?.secondMessage)) : ''
-  const canUndo = prompt?.method === 'GAME_PLAY_MANA' || prompt?.method === 'GAME_SELECT'
+  // XMage only takes back mana you tapped while holding priority; a spell being paid for is cancelled instead
+  const self = game.players.find((p) => p.id === game.myPlayerId)
+  const canUndo = prompt?.method === 'GAME_SELECT' && game.stack.length === 0 && (self?.undoSteps ?? 0) > 0
+
+  const undo = () => {
+    store.action('UNDO')
+    // XMage restores the state but answers with a stale board; an id that matches nothing makes it
+    // send the prompt again with the real one (the Swing client uses the same trick after reconnects)
+    store.respond('uuid', crypto.randomUUID())
+  }
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -79,7 +88,7 @@ export function PromptBar({ prompt, game }: { prompt: Prompt | null; game: GameV
         return
       }
       if (e.key === 'z' && (e.ctrlKey || e.metaKey) && canUndo) {
-        store.action('UNDO')
+        undo()
         return
       }
       const button = buttons.find((b) => b.hotkey === e.key)
@@ -109,7 +118,7 @@ export function PromptBar({ prompt, game }: { prompt: Prompt | null; game: GameV
       </div>
       <div className="prompt-tools">
         {canUndo && (
-          <button className="btn ghost" onClick={() => store.action('UNDO')} title="Undo (Ctrl+Z)">
+          <button className="btn ghost" onClick={undo} title="Undo (Ctrl+Z)">
             Undo
           </button>
         )}
@@ -138,6 +147,14 @@ export function PromptBar({ prompt, game }: { prompt: Prompt | null; game: GameV
               }}
             >
               Spend mana pool automatically <kbd>{autoMana ? 'on' : 'off'}</kbd>
+            </button>
+            <button
+              onClick={() => {
+                store.action('ROLLBACK_TURNS', 0)
+                setMenu(false)
+              }}
+            >
+              Ask to restart this turn
             </button>
             {store.testMode && (
               <button

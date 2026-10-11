@@ -127,6 +127,8 @@ final class ViewMapper {
         o.addProperty("hasLeft", p.hasLeft());
         o.addProperty("timerActive", p.isTimerActive());
         o.addProperty("priorityTimeLeftSecs", p.getPriorityTimeLeftSecs());
+        // > 0: the player has something XMage can undo (mana tapped while holding priority)
+        o.addProperty("undoSteps", p.getStatesSavedSize());
         o.addProperty("monarch", p.isMonarch());
         o.addProperty("initiative", p.isInitiative());
         o.addProperty("wins", p.getWins());
@@ -211,6 +213,9 @@ final class ViewMapper {
     }
 
     private static JsonObject card(CardView c, PlayableObjectsList canPlay, int depth) {
+        // abilities (on the stack, or offered in "pick a trigger" dialogs) know the card they come from
+        CardView source = c instanceof StackAbilityView ? ((StackAbilityView) c).getSourceCard()
+                : c instanceof AbilityView ? ((AbilityView) c).getSourceCard() : null;
         JsonObject o = simpleCard(c);
         o.addProperty("name", c.getName());
         o.addProperty("displayName", c.getDisplayName());
@@ -225,7 +230,7 @@ final class ViewMapper {
         o.addProperty("colors", c.getColor() == null ? "" : c.getColor().toString());
         o.addProperty("frameColors", c.getFrameColor() == null ? "" : c.getFrameColor().toString());
         o.addProperty("rarity", c.getRarity() == null ? null : c.getRarity().name());
-        o.add("rules", rules(c.getRules(), c.getName()));
+        o.add("rules", rules(c.getRules(), source == null ? c.getName() : source.getName()));
         o.addProperty("power", c.getPower());
         o.addProperty("toughness", c.getToughness());
         o.addProperty("loyalty", c.getLoyalty());
@@ -233,7 +238,7 @@ final class ViewMapper {
         o.add("counters", counters(c.getCounters()));
         o.addProperty("zone", c.getZone() == null ? null : c.getZone().name());
         o.addProperty("objectType", c.getMageObjectType() == null ? null : c.getMageObjectType().name());
-        o.addProperty("isAbility", c.isAbility());
+        o.addProperty("isAbility", c.isAbility() || c instanceof AbilityView);
         o.addProperty("abilityType", c.getAbilityType() == null ? null : c.getAbilityType().name());
         o.addProperty("paid", c.isPaid());
         o.addProperty("canTransform", c.canTransform());
@@ -260,8 +265,8 @@ final class ViewMapper {
             if (c.getSecondCardFace() != null) {
                 o.add("secondFace", card(c.getSecondCardFace(), null, depth + 1));
             }
-            if (c instanceof StackAbilityView && ((StackAbilityView) c).getSourceCard() != null) {
-                o.add("sourceCard", card(((StackAbilityView) c).getSourceCard(), null, depth + 1));
+            if (source != null) {
+                o.add("sourceCard", card(source, null, depth + 1));
             }
         }
 

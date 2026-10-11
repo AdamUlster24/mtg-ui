@@ -80,6 +80,7 @@ export interface Player {
   active: boolean
   hasPriority: boolean
   hasLeft: boolean
+  undoSteps: number
   monarch: boolean
   initiative: boolean
   designations: string[]

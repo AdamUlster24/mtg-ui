@@ -7,3 +7,4 @@ dist/
 .Rhistory
 test-results/
 playwright-report/
+tests/debug/
