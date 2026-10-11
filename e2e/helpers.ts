@@ -341,3 +341,62 @@ export async function finish(table: Table) {
     await seat.context.close()
   }
 }
+
+// ---------------------------------------------------------------- dialogs
+
+/** Answers the number picker */
+export async function setAmount(seat: Seat, value: number) {
+  const before = await waitPrompt(seat, 'GAME_GET_AMOUNT')
+  await seat.page.locator('.modal .amount input').fill(String(value))
+  await seat.page.locator('.modal footer .primary').click()
+  return promptChanged(seat, before)
+}
+
+/** Answers the "distribute N among these" dialog, one number per row */
+export async function setAmounts(seat: Seat, values: number[]) {
+  const before = await waitPrompt(seat, 'GAME_GET_MULTI_AMOUNT')
+  const inputs = seat.page.locator('.modal .multi-amount input')
+  await expect(inputs).toHaveCount(values.length)
+  for (let i = 0; i < values.length; i++) {
+    await inputs.nth(i).fill(String(values[i]))
+  }
+  await seat.page.locator('.modal footer .primary').click()
+  return promptChanged(seat, before)
+}
+
+/** Picks a card in the card picker dialog (library search, graveyard, piles, revealed cards) */
+export async function pickCard(seat: Seat, name: string) {
+  const before = await snap(seat)
+  await seat.page.locator(`.modal .card-grid .card[data-name="${name}"]`).first().click()
+  return promptChanged(seat, before)
+}
+
+/** Closes the card picker with its "Done" button */
+export async function pickDone(seat: Seat) {
+  const before = await snap(seat)
+  await seat.page.locator('.modal footer .btn:not(.ghost)').click()
+  return promptChanged(seat, before)
+}
+
+/** Clicks a player's life orb, e.g. as a target */
+export async function clickPlayer(seat: Seat, playerName: string) {
+  const s = await snap(seat)
+  const player = s.game.players.find((p: any) => p.name === playerName)
+  return clickId(seat, player.id)
+}
+
+/** True once the card's art has loaded (false: the drawn fallback frame is shown instead) */
+export async function hasArt(seat: Seat, locator: Locator, timeout = 20_000): Promise<boolean> {
+  const deadline = Date.now() + timeout
+  while (Date.now() < deadline) {
+    const state = await locator.evaluate((el) => {
+      const img = el.querySelector('.face img') as HTMLImageElement | null
+      if (!img) return el.querySelector('.text-face') ? 'text' : 'none'
+      return img.complete && img.naturalWidth > 0 ? 'art' : 'loading'
+    })
+    if (state === 'art') return true
+    if (state === 'text') return false
+    await sleep(200)
+  }
+  return false
+}

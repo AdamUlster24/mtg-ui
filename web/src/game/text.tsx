@@ -5,16 +5,19 @@ import type { Card } from '../protocol/types'
 export function imageUrls(card: Card): string[] {
   const source = card.isAbility && card.sourceCard ? card.sourceCard : card
   if (source.faceDown || !source.name) return []
-  const base = `set=${encodeURIComponent(source.set ?? '')}&name=${encodeURIComponent(source.name)}`
-  const asCard = `/img/card?${base}&number=${encodeURIComponent(source.number ?? '')}${source.transformed ? '&back=1' : ''}`
-  if (source.commandKind && source.commandKind !== 'commander') {
-    return [`/img/card?${base}&token=1`]
+  const name = encodeURIComponent(source.name)
+  const set = encodeURIComponent(source.set ?? '')
+  const asCard = `/img/card?set=${set}&name=${name}&number=${encodeURIComponent(source.number ?? '')}${source.transformed ? '&back=1' : ''}`
+  if (source.token || (source.commandKind && source.commandKind !== 'commander')) {
+    // XMage knows tokens and emblems by an image name and number ("Treasure", 2)
+    const image = encodeURIComponent(source.imageFileName || source.name.replace(/ Token$/, ''))
+    const asToken = `/img/card?set=${set}&name=${image}&number=${source.imageNumber ?? 0}&token=1`
+    // token copies of real cards have no token art, so fall back to the card itself
+    return source.token ? [asToken, `/img/card?set=&number=&name=${name}`] : [asToken]
   }
-  // token copies of real cards have no token art, so fall back to the card itself
-  return source.token ? [`/img/card?${base}&token=1`, `/img/card?set=&number=&name=${encodeURIComponent(source.name)}`] : [asCard]
+  return [asCard]
 }
 
-// only real mana / cost symbols, XMage also uses braces for placeholders
 const SYMBOL = /\{([0-9WUBRGCXYZSTQEPH/]{1,5}|½|∞)\}/gi
 
 /** "{2}{W/U}" -> mana symbol images */
@@ -86,7 +89,8 @@ export function RichText({ html }: { html: string }) {
 
 export function plain(html: string | undefined): string {
   if (!html) return ''
-  return new DOMParser().parseFromString(html.replace(/<br\s*\/?>/gi, ' '), 'text/html').body.textContent ?? ''
+  const spaced = html.replace(/<(br|div|p)\b[^>]*>/gi, ' ')
+  return (new DOMParser().parseFromString(spaced, 'text/html').body.textContent ?? '').replace(/\s\[[0-9a-f]{3}\]/g, '').trim()
 }
 
 /** XMage tags objects in messages with a short id like "Sol Ring [3fa]"; noise for players */

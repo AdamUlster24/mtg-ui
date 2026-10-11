@@ -134,6 +134,7 @@ export function PromptBar({ prompt, game }: { prompt: Prompt | null; game: GameV
               onClick={() => {
                 store.action(autoMana ? 'MANA_AUTO_PAYMENT_OFF' : 'MANA_AUTO_PAYMENT_ON')
                 setAutoMana(!autoMana)
+                setMenu(false)
               }}
             >
               Spend mana pool automatically <kbd>{autoMana ? 'on' : 'off'}</kbd>

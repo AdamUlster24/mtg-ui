@@ -6,7 +6,10 @@ import com.google.gson.JsonParser;
 import io.javalin.http.Context;
 import org.apache.log4j.Logger;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -17,7 +20,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -42,13 +47,57 @@ final class CardImages {
     private final Object throttle = new Object();
     private long lastRequest = 0;
 
+    // XMage's own token / emblem art table: "SET/Name" or "SET/Name/imageNumber" -> image link
+    private final Map<String, String> tokenLinks = new HashMap<>();
+    private final Map<String, String> tokenLinksByName = new HashMap<>();
+
     CardImages(Path cacheDir) throws IOException {
         this.cacheDir = cacheDir;
         Files.createDirectories(cacheDir);
+        try (InputStream in = CardImages.class.getResourceAsStream("/token-images.tsv")) {
+            if (in == null) {
+                logger.warn("token-images.tsv is missing (scripts/sync-token-images.sh creates it), tokens will be looked up by name");
+                return;
+            }
+            BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] parts = line.split("\t");
+                if (parts.length != 2) {
+                    continue;
+                }
+                String key = parts[0].toLowerCase(Locale.ENGLISH);
+                tokenLinks.put(key, parts[1]);
+                String[] path = key.split("/");
+                if (path.length >= 2) {
+                    tokenLinksByName.putIfAbsent(path[1], parts[1]);
+                }
+            }
+        }
+    }
+
+    private String knownTokenLink(String set, String name, String imageNumber) {
+        String key = set + "/" + name.toLowerCase(Locale.ENGLISH);
+        String link = imageNumber.isEmpty() || imageNumber.equals("0") ? null : tokenLinks.get(key + "/" + imageNumber);
+        if (link == null) {
+            link = tokenLinks.get(key);
+        }
+        if (link == null) {
+            link = tokenLinks.get(key + "/1");
+        }
+        if (link == null) {
+            // same token from any other set is better than a drawn placeholder
+            link = tokenLinksByName.get(name.toLowerCase(Locale.ENGLISH));
+        }
+        if (link != null && link.contains("api.scryfall.com") && !link.contains("version=")) {
+            link += (link.contains("?") ? "&" : "?") + "version=normal";
+        }
+        return link;
     }
 
     /**
      * GET /img/card?set=&number=&name=&token=&back=
+     * (for tokens: name = XMage's image name, number = its image number)
      */
     void handle(Context ctx) {
         String set = clean(ctx.queryParam("set")).toLowerCase(Locale.ENGLISH);
@@ -57,7 +106,7 @@ final class CardImages {
         boolean token = "1".equals(ctx.queryParam("token"));
         boolean back = "1".equals(ctx.queryParam("back"));
 
-        String key = (token ? "token_" + set + "_" + slug(name) : set + "_" + slug(number) + "_" + slug(name))
+        String key = (token ? "token_" + set + "_" + slug(name) + "_" + slug(number) : set + "_" + slug(number) + "_" + slug(name))
                 + (back ? "_back" : "");
         Path file = cacheDir.resolve(key + ".jpg");
         try {
@@ -80,6 +129,10 @@ final class CardImages {
     private boolean download(Path file, String set, String number, String name, boolean token, boolean back) throws IOException {
         String face = back ? "&face=back" : "";
         if (token) {
+            String known = knownTokenLink(set, name, number);
+            if (known != null && fetchImage(known, file)) {
+                return true;
+            }
             String url = tokenImageUrl(name, set);
             return url != null && fetchImage(url, file);
         }
