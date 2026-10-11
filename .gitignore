@@ -1,6 +1,9 @@
 run/
+run-*/
 target/
 node_modules/
 dist/
 *.log
 .Rhistory
+test-results/
+playwright-report/

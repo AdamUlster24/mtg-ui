@@ -1,0 +1,17 @@
+{
+  "name": "mtg-ui-e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:scenarios": "playwright test --project=scenarios",
+    "test:games": "playwright test --project=games",
+    "test:online": "playwright test --project=online",
+    "capture": "playwright test --project=captures"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.0",
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2"
+  }
+}

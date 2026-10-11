@@ -37,13 +37,13 @@ public final class GatewayMain {
 
     public static void main(String[] args) throws Exception {
         System.setProperty("java.awt.headless", "true");
-        new GatewayMain().start(args);
+        new GatewayMain().start();
     }
 
-    private void start(String[] args) throws Exception {
+    private void start() throws Exception {
         if (config.embeddedServer) {
             logger.info("Starting embedded XMage server...");
-            mage.server.Main.main(args);
+            mage.server.Main.main(new String[]{"-testMode=" + config.testMode});
             waitForServer();
         }
 

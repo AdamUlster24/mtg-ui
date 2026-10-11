@@ -4,11 +4,15 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 MAGE_DIR="${MAGE_DIR:-$ROOT/../mage}"
-RUN_DIR="$ROOT/run"
+RUN_DIR="${RUN_DIR:-$ROOT/run}"
+XMAGE_PORT="${XMAGE_PORT:-17171}"
+export XMAGE_PORT
 
-"$ROOT/mvnw" -q -B -f "$ROOT/gateway/pom.xml" package
+if [ "${SKIP_BUILD:-0}" != "1" ]; then
+    "$ROOT/mvnw" -q -B -f "$ROOT/gateway/pom.xml" package
+fi
 
-if [ -f "$ROOT/web/package.json" ] && [ "${SKIP_WEB:-0}" != "1" ]; then
+if [ "${SKIP_BUILD:-0}" != "1" ] && [ "${SKIP_WEB:-0}" != "1" ]; then
     (cd "$ROOT/web" && { [ -d node_modules ] || npm install; } && npm run build)
 fi
 
@@ -16,9 +20,13 @@ fi
 mkdir -p "$RUN_DIR/config" "$RUN_DIR/plugins"
 if [ ! -f "$RUN_DIR/config/config.xml" ]; then
     # only the gateway talks to XMage, so keep its port off the network
-    sed 's/serverAddress="0.0.0.0"/serverAddress="127.0.0.1"/' \
+    # (secondaryBindPort is XMage's callback channel, it has to differ per server on one machine)
+    sed -e 's/serverAddress="0.0.0.0"/serverAddress="127.0.0.1"/' \
+        -e "s/ port=\"17171\"/ port=\"$XMAGE_PORT\"/" \
+        -e "s/secondaryBindPort=\"17179\"/secondaryBindPort=\"$((XMAGE_PORT + 8))\"/" \
         "$MAGE_DIR/Mage.Server/config/config.xml" > "$RUN_DIR/config/config.xml"
 fi
+export WEB_DIST="${WEB_DIST:-$ROOT/web/dist}"
 rm -f "$RUN_DIR"/plugins/*.jar
 for jar in "$ROOT"/gateway/target/lib/mage-{game,deck,player,tournament}-*.jar; do
     name="$(basename "$jar")"

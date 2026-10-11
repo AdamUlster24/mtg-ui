@@ -206,6 +206,18 @@ final class ClientSession implements MageClient {
             case "action":
                 action(msg);
                 return null;
+            case "cheat": {
+                // XMage test mode only (the server ignores it otherwise): runs a command group from config/init.txt
+                JsonObject game;
+                synchronized (this) {
+                    game = currentGame;
+                }
+                if (game == null || stringOrNull(game, "playerId") == null) {
+                    throw new GatewayException("Not in a game");
+                }
+                session.cheatShow(uuid(game, "gameId"), uuid(game, "playerId"));
+                return null;
+            }
             case "chat":
                 session.sendChatMessage(uuid(msg, "chatId"), string(msg, "message"));
                 return null;
@@ -253,6 +265,7 @@ final class ClientSession implements MageClient {
             return o;
         }
         o.addProperty("userName", userName);
+        o.addProperty("testMode", session.isTestMode());
         o.addProperty("roomId", ViewMapper.str(session.getMainRoomId()));
         JsonArray gameTypes = new JsonArray();
         for (GameTypeView type : session.getGameTypes()) {

@@ -38,6 +38,8 @@ interface State {
   screen: Screen
   online: boolean
   userName: string | null
+  /** XMage test mode: cheat commands are available */
+  testMode: boolean
   gameTypes: string[]
   deckTypes: string[]
   table: TableInfo | null
@@ -83,6 +85,7 @@ export const useStore = create<State>((set, get) => {
     }
     set((s) => ({
       userName: resume.userName ?? null,
+      testMode: !!resume.testMode,
       gameTypes: resume.gameTypes ?? [],
       deckTypes: resume.deckTypes ?? [],
       table: resume.table ?? null,
@@ -202,6 +205,7 @@ export const useStore = create<State>((set, get) => {
     screen: 'connecting',
     online: false,
     userName: null,
+    testMode: false,
     gameTypes: [],
     deckTypes: [],
     table: null,
@@ -280,3 +284,6 @@ export const useStore = create<State>((set, get) => {
     dismissUserRequest: () => set({ userRequest: null }),
   }
 })
+
+// handle for the e2e tests and for poking at the state from the browser console
+;(window as unknown as { mtgui: unknown }).mtgui = { store: useStore }

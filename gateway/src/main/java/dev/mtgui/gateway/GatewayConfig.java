@@ -13,6 +13,8 @@ final class GatewayConfig {
     final String password = env("GATEWAY_PASSWORD", "");
     // true: start the XMage server inside this process; false: connect to one that is already running
     final boolean embeddedServer = Boolean.parseBoolean(env("XMAGE_EMBEDDED", "true"));
+    // XMage test mode: no deck validation, cheat commands from config/init.txt (used by the e2e tests)
+    final boolean testMode = Boolean.parseBoolean(env("XMAGE_TEST_MODE", "false"));
     final String xmageHost = env("XMAGE_HOST", "127.0.0.1");
     final int xmagePort = Integer.parseInt(env("XMAGE_PORT", "17171"));
     final String defaultGameType = env("XMAGE_GAME_TYPE", "Commander Two Player Duel");

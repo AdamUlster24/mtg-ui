@@ -61,6 +61,7 @@ const PASSES: [string, string, string][] = [
 export function PromptBar({ prompt, game }: { prompt: Prompt | null; game: GameView }) {
   const store = useStore()
   const [menu, setMenu] = useState(false)
+  const [autoMana, setAutoMana] = useState(true)
   const buttons = prompt ? buttonsFor(prompt, game, store) : []
   const waiting = !prompt || prompt.method === 'GAME_UPDATE_AND_INFORM'
   const message = prompt ? tidy(prompt.data.message ?? prompt.data.choice?.message) : 'Waiting…'
@@ -92,7 +93,7 @@ export function PromptBar({ prompt, game }: { prompt: Prompt | null; game: GameV
   })
 
   return (
-    <div className={`prompt-bar ${waiting ? 'waiting' : 'acting'}`}>
+    <div className={`prompt-bar ${waiting ? 'waiting' : 'acting'}`} data-method={prompt?.method} data-message-id={prompt?.messageId}>
       <div className="prompt-text">
         <div className="prompt-message">
           <RichText html={message} />
@@ -129,6 +130,24 @@ export function PromptBar({ prompt, game }: { prompt: Prompt | null; game: GameV
               </button>
             ))}
             <hr />
+            <button
+              onClick={() => {
+                store.action(autoMana ? 'MANA_AUTO_PAYMENT_OFF' : 'MANA_AUTO_PAYMENT_ON')
+                setAutoMana(!autoMana)
+              }}
+            >
+              Spend mana pool automatically <kbd>{autoMana ? 'on' : 'off'}</kbd>
+            </button>
+            {store.testMode && (
+              <button
+                onClick={() => {
+                  setMenu(false)
+                  store.request('cheat').catch((e: Error) => store.notify('Test mode', e.message))
+                }}
+              >
+                Test mode: run commands
+              </button>
+            )}
             <button
               className="danger"
               onClick={() => {

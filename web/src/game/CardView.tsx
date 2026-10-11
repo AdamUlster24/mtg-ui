@@ -101,6 +101,8 @@ export const CardView = memo(function CardView({ card, shared = true, className 
       layoutId={shared ? card.id : undefined}
       className={classes.filter(Boolean).join(' ')}
       data-oid={shared ? card.id : undefined}
+      data-card-id={card.id}
+      data-name={card.name}
       initial={false}
       transition={{ type: 'spring', stiffness: 380, damping: 34, mass: 0.9 }}
       onMouseEnter={() => setPreview(card)}

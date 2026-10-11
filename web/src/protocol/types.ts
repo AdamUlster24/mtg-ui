@@ -192,6 +192,7 @@ export interface Resume {
   token: string
   connected: boolean
   userName?: string
+  testMode?: boolean
   gameTypes?: string[]
   deckTypes?: string[]
   table?: TableInfo | null

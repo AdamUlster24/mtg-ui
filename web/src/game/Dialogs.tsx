@@ -130,6 +130,19 @@ function MultiAmountDialog({ prompt }: { prompt: Prompt }) {
 
 const text = (value: unknown): string => (typeof value === 'string' ? value : '')
 
+/** Targets of the prompt that sit in a graveyard or in exile, where they can't be clicked directly */
+function offBoardTargets(prompt: Prompt): Card[] {
+  const game = prompt.data.game
+  const wanted = new Set([...(prompt.data.targets ?? []), ...((prompt.data.options?.possibleTargets as string[]) ?? [])])
+  if (wanted.size === 0) return []
+  const hidden = [
+    ...game.players.flatMap((p) => [...p.graveyard, ...p.exile]),
+    ...game.exiles.flatMap((l) => l.cards),
+  ]
+  const seen = new Set<string>()
+  return hidden.filter((c) => wanted.has(c.id) && !seen.has(c.id) && seen.add(c.id))
+}
+
 /** Dialog for the prompts that can't be answered by clicking on the board */
 export function PromptDialog({ prompt }: { prompt: Prompt }) {
   const respond = useStore((s) => s.respond)
@@ -170,9 +183,11 @@ export function PromptDialog({ prompt }: { prompt: Prompt }) {
           </div>
         </Modal>
       )
-    case 'GAME_TARGET':
-      // picking from cards that are not on the table (library search, graveyard, revealed cards)
-      if (!data.cards1 || data.cards1.length === 0) return null
+    case 'GAME_TARGET': {
+      // picking from cards that are not on the table: a library search or revealed cards (sent along
+      // with the prompt), or targets lying in a graveyard / exile
+      const picks = data.cards1 && data.cards1.length > 0 ? data.cards1 : offBoardTargets(prompt)
+      if (picks.length === 0) return null
       if (hidden === prompt.messageId) {
         return (
           <button className="btn primary reopen" onClick={() => setHidden(null)}>
@@ -182,7 +197,7 @@ export function PromptDialog({ prompt }: { prompt: Prompt }) {
       }
       return (
         <Modal title={plain(data.message) || 'Choose'} wide onClose={() => setHidden(prompt.messageId)}>
-          <CardGrid cards={data.cards1} onPick={(card) => respond('uuid', card.id)} />
+          <CardGrid cards={picks} onPick={(card) => respond('uuid', card.id)} />
           <footer>
             <button className="btn ghost" onClick={() => setHidden(prompt.messageId)}>
               Look at the board
@@ -195,6 +210,7 @@ export function PromptDialog({ prompt }: { prompt: Prompt }) {
           </footer>
         </Modal>
       )
+    }
     default:
       return null
   }
