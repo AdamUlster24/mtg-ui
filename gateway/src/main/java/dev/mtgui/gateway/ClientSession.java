@@ -530,26 +530,7 @@ final class ClientSession implements MageClient {
     private static JsonArray deckCards(Collection<SimpleCardView> cards) {
         JsonArray list = new JsonArray();
         for (SimpleCardView c : cards) {
-            JsonObject o = c instanceof CardView ? ViewMapper.card((CardView) c, null) : new JsonObject();
-            if (!(c instanceof CardView)) {
-                // decks travel as bare set / number pairs: look the rest up
-                CardInfo info = CardRepository.instance.findCard(c.getExpansionSetCode(), c.getCardNumber());
-                o.addProperty("id", c.getId().toString());
-                o.addProperty("set", c.getExpansionSetCode());
-                o.addProperty("number", c.getCardNumber());
-                o.addProperty("name", info == null ? "?" : info.getName());
-                o.addProperty("typeLine", info == null ? "" : String.join(" ", info.getTypes().stream().map(Object::toString).toArray(String[]::new)));
-                o.addProperty("manaValue", info == null ? 0 : info.getManaValue());
-                JsonArray types = new JsonArray();
-                if (info != null) {
-                    info.getTypes().forEach(t -> types.add(t.name()));
-                }
-                o.add("types", types);
-                o.add("rules", new JsonArray());
-                o.add("counters", new JsonArray());
-                o.add("targets", new JsonArray());
-            }
-            list.add(o);
+            list.add(ViewMapper.knownCard(c));
         }
         return list;
     }

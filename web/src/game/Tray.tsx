@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Card, GameView, NamedCards } from '../protocol/types'
 import { CardView } from './CardView'
 import { useInteraction } from './interaction'
@@ -38,7 +38,22 @@ export function trayLists(game: GameView): TrayList[] {
  * (something was just revealed to you) and can be folded away; it stays reachable as a chip.
  */
 export function Tray({ game }: { game: GameView }) {
-  const lists = useMemo(() => trayLists(game), [game])
+  const live = useMemo(() => trayLists(game), [game])
+  // XMage only reports looked-at and revealed cards for a moment. Like the Swing client's windows,
+  // keep what was shown until the player closes it (or the turn is over).
+  const [kept, setKept] = useState<TrayList[]>([])
+  const before = useRef<TrayList[]>([])
+  useEffect(() => {
+    const now = new Set(live.map((l) => l.key))
+    const gone = before.current.filter((l) => !now.has(l.key) && (l.kind === 'lookedAt' || l.kind === 'revealed'))
+    before.current = live
+    setKept((old) => {
+      const next = [...old.filter((l) => !now.has(l.key) && !gone.some((g) => g.key === l.key)), ...gone]
+      return next.length === old.length && next.every((l, i) => l === old[i]) ? old : next
+    })
+  }, [live])
+  useEffect(() => setKept([]), [game.turn])
+  const lists = useMemo(() => [...live, ...kept.map((l) => ({ ...l, past: true }))] as (TrayList & { past?: boolean })[], [live, kept])
   const { mark, click } = useInteraction()
   const [closed, setClosed] = useState<Record<string, string>>({})
   const signature = (list: TrayList) => list.cards.map((c) => c.id).join(',')
@@ -63,7 +78,7 @@ export function Tray({ game }: { game: GameView }) {
         const shown = open || explicit
         const playable = list.cards.filter((c) => mark(c.id, c)).length
         return (
-          <section key={list.key} className={`tray-list kind-${list.kind} ${shown ? 'open' : ''}`} data-tray={list.kind} data-title={list.title}>
+          <section key={list.key} className={`tray-list kind-${list.kind} ${shown ? 'open' : ''} ${list.past ? 'past' : ''}`} data-tray={list.kind} data-title={list.title}>
             <button
               className="tray-head"
               onClick={() => setClosed((old) => ({ ...old, [list.key]: shown ? signature(list) : 'open' }))}
@@ -74,6 +89,11 @@ export function Tray({ game }: { game: GameView }) {
               <b>{list.cards.length}</b>
               {playable > 0 && <i className="tray-playable">▶{playable}</i>}
             </button>
+            {list.past && (
+              <button className="tray-close" title="Close" onClick={() => setKept((old) => old.filter((l) => l.key !== list.key))}>
+                ✕
+              </button>
+            )}
             {shown && (
               <div className="tray-cards">
                 {list.cards.map((card) => (

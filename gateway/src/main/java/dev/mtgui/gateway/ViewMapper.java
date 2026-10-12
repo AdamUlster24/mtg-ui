@@ -99,7 +99,7 @@ final class ViewMapper {
             entry.addProperty("name", l.getName());
             JsonArray list = new JsonArray();
             for (SimpleCardView c : l.getCards().values()) {
-                list.add(c instanceof CardView ? card((CardView) c, canPlay) : simpleCard(c));
+                list.add(c instanceof CardView ? card((CardView) c, canPlay) : knownCard(c));
             }
             entry.add("cards", list);
             lookedAt.add(entry);
@@ -130,7 +130,7 @@ final class ViewMapper {
             entry.addProperty("name", hand.getKey());
             JsonArray cards = new JsonArray();
             for (SimpleCardView c : hand.getValue().values()) {
-                cards.add(c instanceof CardView ? card((CardView) c, null) : simpleCard(c));
+                cards.add(knownCard(c));
             }
             entry.add("cards", cards);
             list.add(entry);
@@ -253,6 +253,38 @@ final class ViewMapper {
             }
         }
         return list;
+    }
+
+    /**
+     * Some lists (looked-at cards, hands of controlled players, decks) only carry set and number.
+     * The card database fills in what a player needs to recognise the card.
+     */
+    static JsonObject knownCard(SimpleCardView c) {
+        if (c instanceof CardView) {
+            return card((CardView) c, null);
+        }
+        JsonObject o = simpleCard(c);
+        mage.cards.repository.CardInfo info = c.getExpansionSetCode() == null || c.getCardNumber() == null ? null
+                : mage.cards.repository.CardRepository.instance.findCard(c.getExpansionSetCode(), c.getCardNumber());
+        o.addProperty("name", info == null ? "" : info.getName());
+        o.addProperty("faceDown", info == null);
+        JsonArray types = new JsonArray();
+        JsonArray rules = new JsonArray();
+        if (info != null) {
+            info.getTypes().forEach(t -> types.add(t.name()));
+            info.getRules().forEach(r -> rules.add(r.replace("{this}", info.getName())));
+            o.addProperty("typeLine", String.join(" ", info.getTypes().stream().map(Object::toString).toArray(String[]::new)));
+            o.addProperty("manaValue", info.getManaValue());
+            o.addProperty("manaCost", String.join("", info.getManaCosts(mage.cards.repository.CardInfo.ManaCostSide.ALL)));
+            o.addProperty("power", info.getPower());
+            o.addProperty("toughness", info.getToughness());
+            o.addProperty("colors", info.getColor() == null ? "" : info.getColor().toString());
+        }
+        o.add("types", types);
+        o.add("rules", rules);
+        o.add("counters", new JsonArray());
+        o.add("targets", new JsonArray());
+        return o;
     }
 
     private static JsonObject simpleCard(SimpleCardView c) {

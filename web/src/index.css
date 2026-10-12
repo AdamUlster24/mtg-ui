@@ -2708,3 +2708,22 @@ table.stops th {
   font-weight: 700;
   color: var(--gold);
 }
+
+.tray-list {
+  position: relative;
+}
+
+.tray-close {
+  position: absolute;
+  right: 4px;
+  top: 2px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.tray-list.past {
+  border-style: dashed;
+}

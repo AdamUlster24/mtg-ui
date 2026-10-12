@@ -1,8 +1,38 @@
-import { useEffect, useState } from 'react'
+import { Component, useEffect, useState, type ReactNode } from 'react'
 import { GameScreen } from './screens/GameScreen'
 import { Lobby } from './screens/Lobby'
 import { Sideboard } from './screens/Sideboard'
 import { useStore } from './store'
+
+/**
+ * A rendering error must never leave the player with a blank page in the middle of a game:
+ * say what happened and offer to redraw (the game itself lives on the server).
+ */
+class Safety extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state = { error: null as Error | null }
+
+  static getDerivedStateFromError(error: Error) {
+    return { error }
+  }
+
+  render() {
+    if (!this.state.error) return this.props.children
+    return (
+      <div className="center-screen">
+        <div className="panel gate" data-crash>
+          <h1>Display problem</h1>
+          <p className="muted">The game is still running. Drawing the screen failed: {this.state.error.message}</p>
+          <button className="btn primary big" onClick={() => this.setState({ error: null })}>
+            Try again
+          </button>
+          <button className="btn" onClick={() => window.location.reload()}>
+            Reload the page
+          </button>
+        </div>
+      </div>
+    )
+  }
+}
 
 function Gate() {
   const { screen, login, submitPassword, passwordError, notify } = useStore()
@@ -100,7 +130,11 @@ export default function App() {
       {screen === 'connecting' && <div className="center-screen">Connecting…</div>}
       {(screen === 'login' || screen === 'password') && <Gate />}
       {screen === 'lobby' && <Lobby />}
-      {screen === 'game' && <GameScreen />}
+      {screen === 'game' && (
+        <Safety>
+          <GameScreen />
+        </Safety>
+      )}
       {screen === 'sideboard' && <Sideboard />}
       {!online && screen !== 'connecting' && <div className="offline">Reconnecting…</div>}
       <Notices />

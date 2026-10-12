@@ -108,6 +108,8 @@ export interface StartOptions {
   videoDir?: string
   baseURL?: string
   prepare?: (context: BrowserContext, name: string) => Promise<void>
+  /** what the host picks under "Table options": data-option name -> value */
+  tableOptions?: Record<string, string | number | boolean>
 }
 
 /**
@@ -121,6 +123,7 @@ export async function startGame(browser: Browser, options: StartOptions = {}): P
   await enterDeck(a, options.deckA ?? MINIMAL_DECK)
   await enterDeck(b, options.deckB ?? MINIMAL_DECK)
 
+  await setTableOptions(a, options.tableOptions ?? {})
   await a.page.getByRole('button', { name: 'Create table' }).click()
   await expect(a.page.locator('.seats')).toBeVisible()
   await b.page.locator('.table-row', { hasText: a.name }).getByRole('button', { name: 'Join' }).click()
@@ -132,6 +135,19 @@ export async function startGame(browser: Browser, options: StartOptions = {}): P
   const table = { a, b, seats: [a, b] }
   await preGame(table)
   return table
+}
+
+/** Fills in "Table options" in the lobby; anything not named goes back to its default */
+export async function setTableOptions(seat: Seat, options: Record<string, string | number | boolean>) {
+  const all = { bestOf: 1, startLife: 40, mulliganType: 'GAME_DEFAULT', freeMulligans: 0, timeLimit: 'NONE', bufferTime: 'NONE', rollbackTurnsAllowed: true, ...options }
+  const details = seat.page.locator('details.table-options')
+  if (!(await details.evaluate((el) => (el as HTMLDetailsElement).open))) await details.locator('summary').click()
+  for (const [name, value] of Object.entries(all)) {
+    const field = details.locator(`[data-option="${name}"]`)
+    if (typeof value === 'boolean') await field.setChecked(value)
+    else if ((await field.evaluate((el) => el.tagName)) === 'SELECT') await field.selectOption(String(value))
+    else await field.fill(String(value))
+  }
 }
 
 /** Starting player choice and mulligan questions */
