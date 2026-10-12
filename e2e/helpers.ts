@@ -362,7 +362,7 @@ export function manaSources(s: Snap): any[] {
   const sources = me(s).battlefield.filter((c: any) => c.playable && !c.tapped && c.types.includes('LAND'))
   // XMage lets you tap anything, so pick a land that makes a color the cost still needs;
   // generic costs are paid with the land type there is most of, to keep the other colors available
-  const copies = (c: any) => sources.filter((o: any) => o.name === c.name).length
+  const copies = (c: any) => me(s).battlefield.filter((o: any) => o.name === c.name).length
   const score = (c: any) => (colors.some((color) => makes(c, color)) ? 100 : 0) + copies(c)
   return sources
     .map((c: any, i: number) => ({ c, i }))

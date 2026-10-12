@@ -143,7 +143,7 @@ test('discarding, milling, a countered spell and combat damage are animated', as
   const table = await startGame(browser)
   const { a, b } = table
   await cheat(a, [
-    ...lands(a, { Island: 5, Swamp: 2 }),
+    ...lands(a, { Island: 9, Swamp: 1 }),
     ...lands(b, { Island: 2 }),
     `hand:${a.name}:Mind Rot:1`,
     `hand:${a.name}:Thought Scour:1`,
@@ -158,13 +158,15 @@ test('discarding, milling, a countered spell and combat damage are animated', as
   await payMana(a)
   const discard = await filmed(a.page, '08-discard', async () => {
     await pass(a)
-    // the opponent picks what to discard
-    for (let i = 0; i < 6; i++) {
-      const s = await until(b, 'a prompt', (x) => (x.prompt && !x.answering ? x : false))
+    // the opponent picks what to discard (two cards, then confirms)
+    for (let i = 0; i < 10; i++) {
       if (opponent(await snap(a)).graveyard.length >= 2) break
+      const s = await until(b, 'a prompt', (x) => (x.prompt && !x.answering ? x : false))
       if (s.prompt!.method === 'GAME_TARGET') {
-        await clickVisible(b, b.page.locator('.hand .card.mark-target, .hand .card').first())
-        await until(b, 'the pick', (x) => x.prompt?.messageId !== s.prompt!.messageId)
+        const open = b.page.locator('.hand .card.mark-target:not(.mark-selected)')
+        if ((await open.count()) > 0 && (s.prompt!.data.options.chosenTargets ?? []).length < 2) await clickVisible(b, open.first())
+        else await b.page.locator('.prompt-buttons button').first().click()
+        await until(b, 'the pick', (x) => x.prompt?.messageId !== s.prompt!.messageId).catch(() => {})
       } else if (s.prompt!.method === 'GAME_SELECT') {
         await pass(b)
       } else {
@@ -213,8 +215,7 @@ test('the turn passing and the phase moving on are animated', async ({ browser }
   const start = await marker()
   const phase = await filmed(a.page, '12-phase-change', async () => {
     const s = await snap(a)
-    await pass(a)
-    await until(a, 'the next step', (x) => x.game.step !== s.game.step)
+    await passUntil(table, a, 'the next step', (x) => x.game.step !== s.game.step)
   })
   expect(phase.animations).toBeGreaterThan(0)
   expect(await marker()).not.toBe(start)

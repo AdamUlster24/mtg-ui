@@ -21,6 +21,12 @@ type Zone = { title: string; playerId: string; zone: 'graveyard' | 'exile' | 'si
 
 function Hand({ cards, playerId }: { cards: Card[]; playerId: string }) {
   const mid = (cards.length - 1) / 2
+  // a gentle fan; the fuller the hand, the flatter, so that it never leans into its neighbours
+  const turn = Math.min(2.6, 14 / Math.max(1, cards.length))
+  const fan = (i: number) => ({
+    ['--rot' as string]: `${(i - mid) * turn}deg`,
+    ['--drop' as string]: `${mid ? ((i - mid) / mid) ** 2 * 12 : 0}px`,
+  })
   const { click } = useInteraction()
   const setPreview = useStore((s) => s.setPreview)
   return (
@@ -31,7 +37,7 @@ function Hand({ cards, playerId }: { cards: Card[]; playerId: string }) {
         <div
           key={card.id}
           className="hand-slot"
-          style={{ ['--o' as string]: i - mid }}
+          style={fan(i)}
           onClick={() => click(card.id)}
           onMouseEnter={() => setPreview(card)}
           onMouseLeave={() => setPreview(null)}
@@ -79,14 +85,17 @@ function Stack({ cards, opponentId }: { cards: Card[]; opponentId: string }) {
         : null
   return (
     <div className="stack-zone" style={{ ['--n' as string]: cards.length }} data-stack-size={cards.length}>
-      <div className="zone-title">Stack · {cards.length}</div>
-      <div className="stack-cards">
-        {cards.map((card, i) => (
-          <div key={card.id} className="stack-slot" style={{ ['--i' as string]: i, zIndex: cards.length - i }}>
-            <CardView card={card} className="in-stack" enterFrom={origin(card)} />
-            {i === 0 && cards.length > 1 && <span className="stack-next">next</span>}
-          </div>
-        ))}
+      <div className="stack-box">
+        <div className="zone-title">Stack · {cards.length}</div>
+        {/* oldest on top showing its title, the next to resolve last and in full */}
+        <div className="stack-cards">
+          {[...cards].reverse().map((card, i) => (
+            <div key={card.id} className="stack-slot" style={{ zIndex: i + 1 }}>
+              <CardView card={card} className="in-stack" enterFrom={origin(card)} />
+              {i === cards.length - 1 && cards.length > 1 && <span className="stack-next">next</span>}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )

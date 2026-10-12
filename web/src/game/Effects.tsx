@@ -16,15 +16,15 @@ const strip = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' 
 export function readLog(line: ChatLine): { kind: Effect['kind'] | 'shuffle' | 'search'; text: string; detail?: string; player?: string } | null {
   const text = strip(line.message)
   // "[Roll a die] ann rolled 1d20, result: 14"
-  let m = /\[Roll a die\] (.+?) rolled \S+, result\w*: (\d+)/i.exec(text)
-  if (m) return { kind: 'die', text: m[2], detail: text.replace(/^\[Roll a die\] /, ''), player: m[1] }
+  let m = /\[Roll a die\]\s*(.+?) rolled .*?result\w*:\s*(\d+)/i.exec(text)
+  if (m) return { kind: 'die', text: m[2], detail: text.replace(/^\[Roll a die\]\s*/, '').replace(/\s*\(source:.*$/, ''), player: m[1].trim() }
   // "ann flipped Heads" (the "won / lost the flip" line that follows is the same event)
   m = /^(.+?) flipped (heads|tails)\b/i.exec(text)
-  if (m) return { kind: 'coin', text: m[2].toLowerCase(), detail: text, player: m[1] }
-  m = /^(.+?)(?:'s|’s) library is shuffled/i.exec(text) ?? /^(.+?) shuffles/i.exec(text)
-  if (m) return { kind: 'shuffle', text: '', player: m[1] }
+  if (m) return { kind: 'coin', text: m[2].toLowerCase(), detail: text.replace(/\s*\(source:.*$/, ''), player: m[1].trim() }
+  m = /^(.+?)\s*(?:'s|’s) library is shuffled/i.exec(text) ?? /^(.+?) shuffles/i.exec(text)
+  if (m) return { kind: 'shuffle', text: '', player: m[1].trim() }
   m = /^(.+?) searches (?:their|his or her|its) library/i.exec(text)
-  if (m) return { kind: 'search', text: '', player: m[1] }
+  if (m) return { kind: 'search', text: '', player: m[1].trim() }
   if (/\bis countered\b|\bcounters? /i.test(text) && !/counters? on\b|\bcounter(s)? (from|to)\b/i.test(text)) return { kind: 'countered', text: 'Countered', detail: text }
   return null
 }

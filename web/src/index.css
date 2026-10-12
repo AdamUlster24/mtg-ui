@@ -980,7 +980,8 @@ select:focus {
   align-items: flex-end;
   height: 100%;
   min-width: 0;
-  padding: 0 0.4rem;
+  /* room for the outermost cards to lean without touching the panel or the prompt */
+  padding: 0 calc(var(--hand-h) * 0.16);
 }
 
 .hand-slot {
@@ -988,8 +989,8 @@ select:focus {
   flex: 0 1 calc(var(--hw) * 0.8);
   width: calc(var(--hw) * 0.8);
   min-width: 0.9rem;
-  transform: translateY(calc(var(--o) * var(--o) * 1.6px + 8%)) rotate(calc(var(--o) * 2.6deg));
-  transform-origin: 50% 120%;
+  transform: translateY(calc(var(--drop) + 8%)) rotate(var(--rot));
+  transform-origin: 50% 100%;
   transition: transform 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.1);
 }
 
@@ -1176,7 +1177,7 @@ select:focus {
 
 .prompt-bar {
   flex: none;
-  width: clamp(230px, 22vw, 330px);
+  width: clamp(210px, 19vw, 330px);
   display: grid;
   gap: 0.5rem;
   padding: 0.8rem;
@@ -2076,13 +2077,9 @@ button.steps {
   margin-top: calc(var(--peek) - var(--stack-h));
 }
 
-/* the one under the pointer slides out to the left, so a tall stack stays readable */
+/* the one under the pointer comes to the front in full (it stays put, so the pointer stays on it) */
 .stack-slot:hover {
   z-index: 100 !important;
-}
-
-.stack-slot:hover .card.in-stack {
-  transform: translateX(-62%) scale(1.12) !important;
 }
 
 .stack-next {
@@ -2748,4 +2745,49 @@ table.stops th {
 
 .last-result.lost {
   color: #ff9b9b;
+}
+
+/* ---------------------------------------------------------------- stack placement (final) */
+
+.stack-zone {
+  /* between the two player strips, never over a panel or the prompt */
+  top: calc(var(--ch) * 0.72);
+  /* the prompt bar below it can be taller than the hand strip (long questions) */
+  --below: max(calc(var(--hand-h) * 1.14), 12.5rem);
+  bottom: var(--below);
+  transform: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: none;
+  backdrop-filter: none;
+  pointer-events: none;
+  --stack-h: calc(var(--ch) * 1.22);
+  --room: calc(100vh - var(--ch) * 0.72 - var(--below) - 3.2rem);
+  --peek: clamp(16px, calc((var(--room) - var(--stack-h)) / max(1, var(--n) - 1)), calc(var(--stack-h) * 0.3));
+}
+
+.stack-box {
+  pointer-events: auto;
+  display: grid;
+  justify-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem;
+  border-radius: 16px;
+  background: rgba(8, 11, 17, 0.55);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(6px);
+}
+
+.stack-zone .stack-slot:not(:first-child),
+.stack-zone .stack-slot:hover ~ .stack-slot,
+.stack-zone .stack-slot:not(:first-child):hover {
+  margin-top: calc(var(--peek) - var(--stack-h));
+}
+
+.stack-next {
+  top: auto;
+  bottom: 6%;
 }

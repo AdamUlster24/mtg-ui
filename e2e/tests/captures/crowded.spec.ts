@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { mkdirSync } from 'node:fs'
 import path from 'node:path'
-import { cheat, clickVisible, finish, snap, startGame, until } from '../../helpers'
+import { cheat, clickVisible, finish, payMana, snap, startGame, until } from '../../helpers'
 import { ROOT } from '../../servers'
 
 const OUT = path.join(ROOT, 'docs', 'captures', 'layout')
@@ -41,7 +41,7 @@ const visibleStrip = (page: Page, selector: string) =>
   )
 
 async function checkStack(page: Page, size: { width: number; height: number }, count: number, label: string) {
-  const zone = (await boxes(page, '.stack-zone'))[0]
+  const zone = (await boxes(page, '.stack-box'))[0]
   const problems: string[] = []
   if (zone.y < 0 || zone.y + zone.h > size.height || zone.x < 0 || zone.x + zone.w > size.width) problems.push('the stack leaves the screen')
   for (const panel of await boxes(page, '.player-panel, .prompt-bar')) {
@@ -52,7 +52,7 @@ async function checkStack(page: Page, size: { width: number; height: number }, c
   for (const [i, c] of cards.entries()) {
     if (c.y < -1 || c.y + c.h > size.height + 1) problems.push(`stack item ${i} leaves the screen`)
   }
-  // every item keeps a strip of its own (its title), the top one is complete
+  // every item keeps a strip of its own (its title), the one that resolves next is complete
   const strips = await page.locator('.stack-zone .stack-slot').evaluateAll((slots) => slots.map((slot, i) => (i === slots.length - 1 ? 999 : slots[i + 1].getBoundingClientRect().top - slot.getBoundingClientRect().top)))
   strips.forEach((strip, i) => {
     if (strip < 14) problems.push(`stack item ${i} shows only ${Math.round(strip)}px`)
@@ -81,14 +81,15 @@ for (const size of SIZES) {
     mkdirSync(OUT, { recursive: true })
     const table = await startGame(browser, { viewport: size })
     const { a } = table
-    await cheat(a, [`hand:${a.name}:Ornithopter:12`])
+    await cheat(a, [`battlefield:${a.name}:Island:12`, `hand:${a.name}:Opt:12`])
     let onStack = 0
     for (const count of [1, 5, 12]) {
-      // a free spell each; the caster keeps priority, so they pile up
+      // instants; the caster keeps priority, so they pile up
       while (onStack < count) {
         const s = await snap(a)
-        const next = s.game.hand.find((c: any) => c.name === 'Ornithopter')
+        const next = s.game.hand.find((c: any) => c.name === 'Opt')
         await clickVisible(a, a.page.locator(`.hand [data-card-id="${next.id}"]`))
+        await payMana(a)
         onStack++
         await until(a, `${onStack} spells on the stack`, (x) => x.game.stack.length === onStack && x.prompt?.method === 'GAME_SELECT' && !x.answering)
       }
@@ -98,8 +99,7 @@ for (const size of SIZES) {
       await a.page.screenshot({ path: path.join(OUT, `${size.width}x${size.height}-stack-${String(count).padStart(2, '0')}.jpg`), type: 'jpeg', quality: 80 })
     }
     // pointing at a covered item brings all of it into view
-    const middle = a.page.locator('.stack-zone .stack-slot').nth(6)
-    await middle.hover({ position: { x: 20, y: 6 } })
+    await clickVisible(a, a.page.locator('.stack-zone .stack-slot').nth(6).locator('.card'), true)
     await a.page.waitForTimeout(400)
     const shown = (await boxes(a.page, '.stack-zone .stack-slot:nth-child(7) .card'))[0]
     expect(shown.y).toBeGreaterThanOrEqual(-1)
