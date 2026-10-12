@@ -241,7 +241,7 @@ export function card(seat: Seat, name: string, zone: Zone = 'any'): Locator {
  * Clicks an element the way a player does: on a spot of it that is actually showing.
  * Cards overlap (a fanned hand, piled lands, attachments), so their centre is often covered.
  */
-export async function clickVisible(seat: Seat, target: Locator) {
+export async function clickVisible(seat: Seat, target: Locator, hoverOnly = false) {
   await target.waitFor({ state: 'visible' })
   await target.scrollIntoViewIfNeeded()
   // a hand card under the pointer is raised over its neighbours: start from a neutral spot
@@ -273,13 +273,42 @@ export async function clickVisible(seat: Seat, target: Locator) {
     })
     // cards slide around after every change: only click once the card has come to rest
     if (found.x >= 0 && found.box === last) {
-      await seat.page.mouse.click(found.x, found.y)
+      if (hoverOnly) await seat.page.mouse.move(found.x, found.y)
+      else await seat.page.mouse.click(found.x, found.y)
       return
     }
     last = found.box
     if (Date.now() > deadline) throw new Error(`${seat.name}: no visible spot to click on ${target}`)
     await sleep(120)
   }
+}
+
+/** Puts the pointer on a card, which opens the large preview; returns the preview */
+export async function hover(seat: Seat, target: Locator): Promise<Locator> {
+  await clickVisible(seat, target, true)
+  const preview = seat.page.locator('.preview')
+  await expect(preview).toBeVisible()
+  return preview
+}
+
+/** Answers whatever comes up next with the first / named option until a "you have priority" prompt is back */
+export async function settle(seat: Seat, choices: (string | RegExp)[] = []): Promise<Snap> {
+  let next = 0
+  for (let i = 0; i < 12; i++) {
+    const s = await until(seat, 'a prompt', (x) => (x.prompt && !x.answering ? x : false))
+    const method = s.prompt!.method
+    if (method === 'GAME_SELECT' || method === 'GAME_UPDATE_AND_INFORM' || method === 'GAME_PLAY_MANA' || method === 'GAME_TARGET') return s
+    if (method === 'GAME_CHOOSE_ABILITY' || method === 'GAME_CHOOSE_CHOICE') {
+      await choose(seat, choices[next++] ?? /./)
+    } else if (method === 'GAME_ASK') {
+      const before = s
+      await seat.page.locator('.prompt-buttons .primary').click()
+      await promptChanged(seat, before)
+    } else {
+      return s
+    }
+  }
+  throw new Error(`${seat.name}: prompts keep coming`)
 }
 
 /** Clicks a card and waits until the server reacted */
