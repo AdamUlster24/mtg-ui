@@ -76,6 +76,8 @@ async function act(seat: Seat, s: Snap, mem: Memory): Promise<void> {
 
     case 'GAME_TARGET': {
       const chosen = (data.options?.chosenTargets as string[] | undefined) ?? []
+      // several of my triggers at once: any order will do
+      if (await clickFirst(seat, page.locator('.modal .trigger-order .trigger .card'))) return
       const dialog = page.locator('.modal .card-grid')
       if ((await dialog.count()) > 0) {
         const done = page.locator('.modal footer .btn:not(.ghost)')

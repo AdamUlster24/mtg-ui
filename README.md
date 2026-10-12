@@ -54,21 +54,97 @@ Only the host runs anything; the friend opens the link, enters the password and 
   password-protected server, for a port-forward of your own.
 - `GATEWAY_PASSWORD=... scripts/play-online.sh` sets the password instead of generating one.
 - XMage's own port (17171) is bound to 127.0.0.1 and is never exposed.
+- Players just pick a name: XMage's account system is switched off (its default); the password is what
+  keeps strangers out.
 - A dropped connection or a reloaded page rejoins the running game; the gateway keeps a player's session
   for 30 minutes after their browser disappears.
 
 ### In a game
 
-- Cards you can play glow blue, legal targets glow orange, your selection glows green.
+- Cards you can play glow blue, legal targets glow orange, your selection glows green. While you pay
+  for something, only the mana sources that can pay what is still owed are lit.
 - The button at the bottom right is always the default action (Pass, Resolve, Attack, Keep, …); `Space`
-  presses it. `Y` / `N` answer questions, `Esc` cancels.
-- `More ▾` holds the pass-until shortcuts (`F4` next turn, `F5` end step, `F7` next main, `F8` stack
-  resolved, `F9` my next turn, `F3` stop passing), the mana pool auto-payment switch, "ask to restart this
-  turn" and concede.
-- While you pay for a spell, `Cancel` takes it back. `Undo` (`Ctrl+Z`) appears when XMage can take back
-  mana you tapped while holding priority.
-- Click a graveyard or exile pile to look through it. Hover any card for a large view with its current
-  text, power/toughness and counters.
+  or `F2` presses it. `Y` / `N` answer questions, `Esc` cancels.
+- Library, graveyard and exile are piles next to each player. Click a graveyard or exile pile to look
+  through it; a pile with a blue `▶n` holds cards you can play from there (flashback, adventures). A
+  revealed top card of the library lies face up on its pile and can be played from there. The graveyard's
+  tooltip says how many card types it holds.
+- Revealed cards, cards you look at, the hand of a player you control, exile piles made by a card and
+  the companion zone open as lists on the left; they fold away and stay until you close them.
+- Hover any card for a large view: both halves of split and adventure cards, the other side of
+  double-faced cards, what your own face-down card really is, printed power/toughness when it was
+  changed, counters, keyword icons and XMage's notes (commander casts and damage, day/night, restrictions).
+  `More ▾ → Hints…` collects all those notes in one panel.
+- The stack is on the right, oldest on top, the next thing to resolve at the bottom in full.
+- `More ▾` holds the pass modes, rollback requests, settings, hints, your sideboard, asking to see the
+  opponent's hand, macro recording and conceding (the game or the whole match).
+
+| Key | |
+|---|---|
+| `Space`, `F2` | confirm / pass |
+| `F3` | stop passing |
+| `F4` | pass until next turn |
+| `F5` | pass until end step |
+| `F6` | pass until next turn, also for things on the stack |
+| `F7` | pass until next main phase |
+| `F9` | pass until my next turn |
+| `F10` | pass until the stack resolves |
+| `F11` | pass until the end step before my turn |
+| `F8` | start / stop recording a macro |
+| `F12` | go to the chat |
+| `Ctrl` (held) | hold priority: keep it after casting, to respond to your own spell |
+| `Ctrl+Z` | undo mana tapped while holding priority |
+
+### Tables
+
+"Table options" in the lobby, for whoever creates the table:
+
+- **Deck rules:** Commander (banlist enforced), the other Commander variants XMage knows, or a regular
+  duel with any cards (60+ cards and a sideboard).
+- **Match:** single game or best of three. XMage has no sideboarding in Commander: the next game starts
+  right away. In a regular duel both players rearrange main deck and sideboard between games.
+- **Starting life**, **starting hand size**, **mulligan rule** (London, Vancouver, Paris, …) and
+  **free mulligans**.
+- **Time limit per player** (a chess clock, shown next to each name) and free seconds per priority.
+- **Rollbacks:** whether players may ask to roll back turns (the opponent has to agree).
+- **Planechase:** a shared plane card in the command zone and a planar die.
+
+## Settings
+
+`Settings` in the lobby, `More ▾ → Settings and stops…` or a click on the phase bar in a game. They are
+kept in the browser and sent to XMage, which applies them at once, also to a running game.
+
+**Stops** – where the game waits for you when the stack is empty:
+
+- A box for each step (upkeep, draw, first main, beginning of combat, end of combat, second main, end
+  step) for your turn and for the opponent's turn. Unticked steps pass by themselves. Default: both main
+  phases on your turn and on the opponent's.
+- *Stop to declare attackers while passing* – `F4` / `F5` / `F7` still stop when you could attack.
+- *Stop to declare blockers when I have possible blockers* / *even when I have none* – while a pass mode
+  is on.
+- *F7 also stops in the opponent's main phases* – off: only in your own.
+- *F5 also stops at my own end step* – off: only at the opponent's.
+- *F10 stops when something new goes on the stack* – on your turn, so you can respond.
+
+**Playing**:
+
+- *Spend mana from my pool automatically*, and *do not spend mana automatically that was in my pool
+  before I started casting* (then you click the pool to use it).
+- *Tapping a land uses its first mana ability* – no question for lands with several.
+- *Ask before passing with mana left in my pool.*
+- *Pass priority right after I cast a spell* / *after I activate an ability* (`Ctrl` or "Hold priority"
+  keeps it for once).
+- *Order my triggers by itself when the order does not matter.*
+- *Ask for the order when several cards go to my graveyard.*
+- *A remembered choice between replacement effects counts for every copy of the card* – off: only for
+  that object. (The choice dialog has a "remember" box.)
+- *Let the opponent ask to see my hand.*
+- *Automatic targeting:* never, when there is only one legal target, or also when all targets are the same.
+- *Remembered answers:* "Always yes / no" on a question, "always first / last" on a trigger and remembered
+  replacement choices last for the game; three buttons forget them.
+
+**This screen** (this browser only): card size on the battlefield, animation speed (normal, fast, off)
+and whether the log is shown.
 
 ## Tests
 
@@ -77,6 +153,7 @@ cd e2e
 npm install
 npx playwright install ffmpeg   # once, for the recordings
 npm test                        # everything
+node ../scripts/parity.mjs --check
 ```
 
 The tests use Google Chrome (`E2E_BROWSER_CHANNEL=chromium` plus `npx playwright install chromium` for the
@@ -86,27 +163,21 @@ bundled browser instead). They start their own servers on other ports and stop t
 
 | Project | Command | What it does |
 |---|---|---|
-| `scenarios` | `npm run test:scenarios` | 22 short games on a server in XMage's test mode, each set up with test commands to hit one thing |
-| `games` | `npm run test:games` | three whole games with legal 100-card decks on a server with normal rules, played by two bots through the UI until someone loses; plus deck validation in the lobby |
+| `scenarios` | `npm run test:scenarios` | short games on a server in XMage's test mode, each set up with test commands to prove one thing: every prompt, card form, setting, menu entry and key |
+| `games` | `npm run test:games` | six whole games with legal 100-card decks on a server with normal rules, played by two bots through the UI until someone loses: three with mono-coloured decks, three with two-colour decks (planeswalkers, modal spells, tokens, graveyard recursion, counterspells); plus deck validation in the lobby |
 | `online` | `npm run test:online` | runs `scripts/play-online.sh` and plays through the public tunnel link |
-| `captures` | `npm run capture` | layout checks at three resolutions and the animation recordings in `docs/captures` |
+| `captures` | `npm run capture` | layout checks at three resolutions and the animation frames and recordings in `docs/captures` |
 
-What the scenarios cover:
+**[docs/parity.md](docs/parity.md)** lists everything XMage's network contract and the Swing client's
+game panel offer – every field of the view classes, every server callback, prompt option, player action
+and setting, every menu entry, hotkey and dialog – with the test that proves the web client handles it.
+It is generated from the XMage sources by `scripts/parity.mjs`; with `--check` it fails when an item has
+no entry or names a test that does not exist, so an XMage update that adds something shows up there.
 
-- **Prompts:** yes/no questions, choice lists (with filter), number picker and X costs, distributing
-  numbers (combat damage among blockers), pile choice, ability picker, picking cards from a library search,
-  from a graveyard and from looked-at cards (scry), ordering simultaneous triggers, target selection on
-  the battlefield, on the stack and on players, mana payment by tapping lands and from the mana pool,
-  declaring attackers ("all attack" and one by one), declaring blockers including two blockers on one
-  attacker, a rollback request answered by the opponent.
-- **Cards:** tokens (created by spells and directly) with their art, a double-faced card transforming
-  into a planeswalker with its back-face art, planeswalker loyalty abilities, auras and equipment
-  attaching, +1/+1 counters, the commander cast from the command zone, dying and returning to it.
-- **Flow:** responding on the stack, cancel while paying, undo, chat, a page reload restoring an open
-  dialog, winning by combat damage with result screens and the way back to the lobby.
-
-`GAME_PLAY_XMANA` is the one prompt type the gateway forwards that no test triggers: current XMage never
-sends it (X is announced through the number picker). The client still answers it with OK / Cancel.
+Three kinds of tests do not go through a real game situation, and say so in the parity list:
+messages XMage sends only on internal errors or admin broadcasts, and one prompt type current XMage no
+longer sends (`GAME_PLAY_XMANA`), are fed to the client directly; the pass-mode keys other than `F4` and
+`F9` are checked by the action they send.
 
 The online test checks, through the public link: the script prints link and password, a wrong password is
 rejected (in the UI and on the raw websocket), a game starts, player A's connection is cut and stays down
@@ -115,15 +186,21 @@ played to its end.
 
 ### Captures
 
-`docs/captures/layout/` has the board at 1280×720, 1600×900 and 1920×1080 with 5, 15 and 30 permanents per
-side. The test that takes them also measures the page: nothing scrolls, the table's sections don't overlap,
-no permanent leaves the table or covers a player panel, and neighbouring slots in a row don't cover each
-other.
+`docs/captures/layout/` – the board at 1280×720, 1600×900 and 1920×1080 with 5, 15 and 30 permanents per
+side, the stack with 1, 5 and 12 items and the hand with 1, 7 and 15 cards. The tests that take them also
+measure the page: nothing scrolls, the table's sections don't overlap, no permanent leaves the table or
+covers a player panel, neighbouring slots don't cover each other, the stack never covers a panel or the
+prompt, and every card in a crowded stack or hand keeps a visible strip of its own.
 
-`docs/captures/animations/` has frames and two recordings (`player-a.webm`, `player-b.webm`, one per side
-of the same game) of: drawing, casting, the opponent casting, damage on a creature, a spell resolving, a
-creature dying, exile with life gain, a bounce to hand, an attack, and life loss. The test asserts that
-animations are running during each of these.
+`docs/captures/animations/` – frames and two recordings (`player-a.webm`, `player-b.webm`, one per side of
+the same game) of: drawing, casting, the opponent casting, damage on a creature, a spell resolving, a
+creature dying, exile with life gain, a bounce to hand, an attack, and life loss.
+
+`docs/captures/events/` – frames of: a die roll, a coin flip, a library search and shuffle, tokens coming
+out of the spell that makes them, counters going on and coming off, a hand being revealed, a discard, a
+mill, a countered spell, combat damage hitting a player, and the phase and the turn changing.
+
+Each of these tests asserts that the animation in question is actually running while it happens.
 
 ## How it works
 
@@ -149,7 +226,10 @@ Browser → gateway: `{id, cmd, ...}`; every command gets `{type:"reply", id, ok
 | `checkDeck {deck}` | validate a pasted decklist |
 | `tables`, `createTable {deck,…}`, `joinTable {tableId, deck}`, `leaveTable`, `startMatch` | lobby |
 | `respond {gameId, kind, value}` | answer a prompt; `kind` = `uuid` \| `boolean` \| `string` \| `integer` \| `manaType` |
-| `action {gameId, action, data?}` | `mage.constants.PlayerAction` (pass modes, undo, rollback, concede) |
+| `action {gameId, action, data?}` | `mage.constants.PlayerAction` (pass modes, undo, rollback, concede, …) |
+| `settings {settings}` | the player's XMage preferences (`UserData`): stop steps, mana payment, targeting, … |
+| `submitDeck {tableId, main, sideboard}` | the rearranged deck between the games of a match |
+| `quitMatch` | concede the whole match |
 | `chat {chatId, message}` | |
 | `cheat` | test mode only: run a command group from `config/init.txt` |
 | `keepalive` | answered with `{type:"pong"}`; the client reconnects when the answers stop |
@@ -170,6 +250,7 @@ defined in `gateway/.../ViewMapper.java` and mirrored in `web/src/protocol/types
 | `XMAGE_PORT` | `17171` | port of the embedded XMage server (written into a new `RUN_DIR/config/config.xml`) |
 | `XMAGE_EMBEDDED` | `true` | `false` = connect to an already running XMage server at `XMAGE_HOST` |
 | `XMAGE_TEST_MODE` | `false` | XMage test mode: no deck validation, test commands (see below) |
+| `XMAGE_MAX_GAMES` | `10` | games XMage runs at the same time (written into a new config) |
 | `XMAGE_GAME_TYPE` / `XMAGE_DECK_TYPE` | Commander Two Player Duel / Variant Magic - Commander | defaults for new tables |
 | `MAGE_DIR` | `../mage` | XMage checkout used by the scripts |
 
@@ -199,13 +280,21 @@ built and tested against; run the tests after an update.
 gateway/    Java gateway (Maven); the JSON contract lives in ViewMapper.java
 web/        React + TypeScript client (Vite)
 e2e/        Playwright tests, test decks, the bot that plays whole games
-scripts/    build-mage.sh, run.sh, play-online.sh, smoke.mjs, stop-test-servers.sh
-docs/       captures taken by the tests
+scripts/    build-mage.sh, run.sh, play-online.sh, parity.mjs, smoke.mjs, stop-test-servers.sh
+docs/       parity.md (generated) and the captures taken by the tests
 mvnw        Maven wrapper, so no system Maven is needed
 run*/       runtime files, created on first start, not committed
 ```
 
-## Not built
+## Known gaps
 
-Best-of-three and sideboarding, drafts / sealed / tournaments, more than two players, a deck builder,
-spectating, user accounts, sounds.
+Left out on purpose; these are the "out of scope" rows of [docs/parity.md](docs/parity.md):
+
+- sound
+- drafts
+- sealed
+- tournaments
+- more than two players
+- replays
+- spectating
+- deck editor (decks are pasted as lists)
