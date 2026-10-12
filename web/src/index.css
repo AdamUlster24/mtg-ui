@@ -980,23 +980,26 @@ select:focus {
   align-items: flex-end;
   height: 100%;
   min-width: 0;
+  container-type: inline-size;
   /* room for the outermost cards to lean without touching the panel or the prompt */
   padding: 0 calc(var(--hand-h) * 0.16);
 }
 
 .hand-slot {
+  /* a crowded hand on a narrow screen: the cards get smaller before their visible strips get too thin */
+  --hcw: min(var(--hw), calc(100cqw - (var(--n) - 1) * 13px));
   /* slots give up width when the hand is crowded, the cards keep theirs and overlap */
-  flex: 0 1 calc(var(--hw) * 0.8);
-  width: calc(var(--hw) * 0.8);
-  min-width: 0.9rem;
+  flex: 0 1 calc(var(--hcw) * 0.8);
+  width: calc(var(--hcw) * 0.8);
+  min-width: 13px;
   transform: translateY(calc(var(--drop) + 8%)) rotate(var(--rot));
   transform-origin: 50% 100%;
   transition: transform 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.1);
 }
 
 .hand-slot:last-child {
-  flex: 0 0 var(--hw);
-  width: var(--hw);
+  flex: 0 0 var(--hcw);
+  width: var(--hcw);
 }
 
 .hand-slot {
@@ -1017,9 +1020,9 @@ select:focus {
 }
 
 .card.in-hand {
-  width: var(--hw);
-  height: calc(var(--hw) * 1.4);
-  --cw: var(--hw);
+  width: var(--hcw, var(--hw));
+  height: calc(var(--hcw, var(--hw)) * 1.4);
+  --cw: var(--hcw, var(--hw));
 }
 
 .opp-hand {

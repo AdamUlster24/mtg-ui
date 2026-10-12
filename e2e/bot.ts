@@ -70,7 +70,9 @@ async function act(seat: Seat, s: Snap, mem: Memory): Promise<void> {
       }
       // say yes, but not forever if the same question keeps coming back
       const buttons = promptButton(seat)
-      await clickVisible(seat, mem.repeats >= 2 ? buttons.last() : buttons.first())
+      // "Pay 3 times Multikicker?" counts up with every yes and never checks the mana
+      const again = Number(/^Pay (\d+) times/i.exec(message)?.[1] ?? 0) > 1
+      await clickVisible(seat, mem.repeats >= 2 || again ? buttons.last() : buttons.first())
       return
     }
 
