@@ -5,7 +5,12 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import io.javalin.websocket.WsContext;
+import mage.cards.decks.DeckCardInfo;
 import mage.cards.decks.DeckCardLists;
+import mage.cards.repository.CardInfo;
+import mage.cards.repository.CardRepository;
+import mage.constants.MatchBufferTime;
+import mage.game.mulligan.MulliganType;
 import mage.constants.ManaType;
 import mage.constants.MatchTimeLimit;
 import mage.constants.MultiplayerAttackOption;
@@ -26,6 +31,10 @@ import org.apache.log4j.Logger;
 import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.Deque;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -64,6 +73,11 @@ final class ClientSession implements MageClient {
     private String lastGameEvent;
     private JsonObject currentTable;
     private final Deque<String> chatHistory = new ArrayDeque<>();
+    // sideboarding between the games of a match: what the server sent, replayed after a reload
+    private String sideboardEvent;
+    private DeckView sideboardDeck;
+    // the player's XMage preferences, as the browser sent them
+    private JsonObject settings;
 
     ClientSession(GatewayConfig config) {
         this.config = config;
@@ -171,7 +185,18 @@ final class ClientSession implements MageClient {
             throw new GatewayException("Missing cmd");
         }
         if (cmd.equals("login")) {
+            if (msg.has("settings") && msg.get("settings").isJsonObject()) {
+                settings = msg.getAsJsonObject("settings");
+            }
             return login(string(msg, "username"));
+        }
+        if (cmd.equals("settings")) {
+            // XMage applies these on the server: stop steps, auto-payment, auto-targeting, ...
+            settings = msg.has("settings") && msg.get("settings").isJsonObject() ? msg.getAsJsonObject("settings") : null;
+            if (session.isConnected() && !session.updatePreferencesForServer(Settings.fromJson(settings))) {
+                throw new GatewayException("The server did not accept the settings" + lastError());
+            }
+            return Settings.toJson(Settings.fromJson(settings));
         }
         if (cmd.equals("resume")) {
             return resume();
@@ -200,6 +225,8 @@ final class ClientSession implements MageClient {
                     throw new GatewayException("Can't start the match" + lastError());
                 }
                 return null;
+            case "submitDeck":
+                return submitDeck(msg);
             case "respond":
                 respond(msg);
                 return null;
@@ -246,6 +273,7 @@ final class ClientSession implements MageClient {
         connection.setHost(config.xmageHost);
         connection.setPort(config.xmagePort);
         connection.setProxyType(Connection.ProxyType.NONE);
+        connection.setUserData(Settings.fromJson(settings));
         if (!session.connectStart(connection)) {
             throw new GatewayException("Can't connect to the game server" + lastError());
         }
@@ -277,9 +305,16 @@ final class ClientSession implements MageClient {
             deckTypes.add(type);
         }
         o.add("deckTypes", deckTypes);
+        o.add("settings", Settings.toJson(Settings.fromJson(settings)));
+        o.add("defaultSettings", Settings.defaults());
+        o.add("tableOptions", tableOptions());
         o.add("table", currentTable == null ? JsonNull.INSTANCE : currentTable);
         o.add("game", currentGame == null ? JsonNull.INSTANCE : currentGame);
 
+        if (sideboardEvent != null) {
+            final String event = sideboardEvent;
+            commands.execute(() -> sendRaw(event));
+        }
         // replay after the reply was sent, so the browser knows about the game first
         if (currentGame != null) {
             final List<String> replay = new java.util.ArrayList<>(chatHistory);
@@ -342,10 +377,23 @@ final class ClientSession implements MageClient {
         options.setLimited(false);
         options.setAttackOption(MultiplayerAttackOption.MULTIPLE);
         options.setRange(RangeOfInfluence.ALL);
-        options.setWinsNeeded(1);
-        options.setMatchTimeLimit(MatchTimeLimit.NONE);
+        options.setWinsNeeded(Math.max(1, Math.min(3, intOr(msg, "winsNeeded", 1))));
+        options.setMatchTimeLimit(enumOr(MatchTimeLimit.class, string(msg, "timeLimit"), MatchTimeLimit.NONE));
+        options.setMatchBufferTime(enumOr(MatchBufferTime.class, string(msg, "bufferTime"), MatchBufferTime.NONE));
+        options.setMullgianType(enumOr(MulliganType.class, string(msg, "mulliganType"), MulliganType.GAME_DEFAULT));
+        options.setFreeMulligans(Math.max(0, Math.min(5, intOr(msg, "freeMulligans", 0))));
+        int startLife = intOr(msg, "startLife", 0);
+        if (startLife > 0) {
+            options.setCustomStartLifeEnabled(true);
+            options.setCustomStartLife(Math.min(startLife, 999));
+        }
+        int startHand = intOr(msg, "startHandSize", 0);
+        if (startHand > 0) {
+            options.setCustomStartHandSizeEnabled(true);
+            options.setCustomStartHandSize(Math.min(startHand, 20));
+        }
         options.setSkillLevel(SkillLevel.CASUAL);
-        options.setRollbackTurnsAllowed(true);
+        options.setRollbackTurnsAllowed(!msg.has("rollbackTurnsAllowed") || msg.get("rollbackTurnsAllowed").getAsBoolean());
         options.setSpectatorsAllowed(true);
         options.setPassword(password);
 
@@ -379,6 +427,139 @@ final class ClientSession implements MageClient {
             currentTable = o;
         }
         return o;
+    }
+
+    /** The choices for a new table, as XMage names them */
+    private static JsonObject tableOptions() {
+        JsonObject o = new JsonObject();
+        JsonArray mulligans = new JsonArray();
+        for (MulliganType type : MulliganType.values()) {
+            mulligans.add(option(type.name(), type.toString()));
+        }
+        o.add("mulliganTypes", mulligans);
+        JsonArray limits = new JsonArray();
+        for (MatchTimeLimit limit : MatchTimeLimit.values()) {
+            limits.add(option(limit.name(), limit.getName()));
+        }
+        o.add("timeLimits", limits);
+        JsonArray buffers = new JsonArray();
+        for (MatchBufferTime buffer : MatchBufferTime.values()) {
+            buffers.add(option(buffer.name(), buffer.getName()));
+        }
+        o.add("bufferTimes", buffers);
+        return o;
+    }
+
+    private static JsonObject option(String key, String text) {
+        JsonObject o = new JsonObject();
+        o.addProperty("key", key);
+        o.addProperty("text", text);
+        return o;
+    }
+
+    /**
+     * Between the games of a match XMage hands every player their deck to rearrange.
+     * The browser answers with the ids of the cards it wants in the main deck and in the sideboard.
+     */
+    private JsonElement submitDeck(JsonObject msg) throws GatewayException {
+        DeckView deck;
+        synchronized (this) {
+            deck = sideboardDeck;
+        }
+        if (deck == null) {
+            throw new GatewayException("There is no deck to submit right now");
+        }
+        Map<String, SimpleCardView> pool = new HashMap<>();
+        deck.getCards().values().forEach(c -> pool.put(c.getId().toString(), c));
+        deck.getSideboard().values().forEach(c -> pool.put(c.getId().toString(), c));
+        DeckCardLists lists = new DeckCardLists();
+        lists.setName(deck.getName());
+        Set<String> used = new HashSet<>();
+        addCards(lists.getCards(), msg.getAsJsonArray("main"), pool, used);
+        addCards(lists.getSideboard(), msg.getAsJsonArray("sideboard"), pool, used);
+        if (used.size() != pool.size()) {
+            throw new GatewayException("Every card has to be in the main deck or in the sideboard");
+        }
+        if (!session.submitDeck(uuid(msg, "tableId"), lists)) {
+            throw new GatewayException("The deck was not accepted (the server shows the reason)" + lastError());
+        }
+        synchronized (this) {
+            sideboardDeck = null;
+            sideboardEvent = null;
+        }
+        return null;
+    }
+
+    private static void addCards(List<DeckCardInfo> target, JsonArray ids, Map<String, SimpleCardView> pool, Set<String> used) throws GatewayException {
+        if (ids == null) {
+            return;
+        }
+        for (JsonElement e : ids) {
+            SimpleCardView card = pool.get(e.getAsString());
+            if (card == null || !used.add(e.getAsString())) {
+                throw new GatewayException("Unknown or repeated card in the submitted deck");
+            }
+            CardInfo info = CardRepository.instance.findCard(card.getExpansionSetCode(), card.getCardNumber());
+            if (info == null) {
+                throw new GatewayException("Can't find card " + card.getExpansionSetCode() + " " + card.getCardNumber());
+            }
+            target.add(new DeckCardInfo(info.getName(), info.getCardNumber(), info.getSetCode(), 1));
+        }
+    }
+
+    private JsonObject deckJson(DeckView deck) {
+        JsonObject o = new JsonObject();
+        o.addProperty("name", deck.getName());
+        o.add("main", deckCards(deck.getCards().values()));
+        o.add("sideboard", deckCards(deck.getSideboard().values()));
+        return o;
+    }
+
+    private static JsonArray deckCards(Collection<SimpleCardView> cards) {
+        JsonArray list = new JsonArray();
+        for (SimpleCardView c : cards) {
+            JsonObject o = c instanceof CardView ? ViewMapper.card((CardView) c, null) : new JsonObject();
+            if (!(c instanceof CardView)) {
+                // decks travel as bare set / number pairs: look the rest up
+                CardInfo info = CardRepository.instance.findCard(c.getExpansionSetCode(), c.getCardNumber());
+                o.addProperty("id", c.getId().toString());
+                o.addProperty("set", c.getExpansionSetCode());
+                o.addProperty("number", c.getCardNumber());
+                o.addProperty("name", info == null ? "?" : info.getName());
+                o.addProperty("typeLine", info == null ? "" : String.join(" ", info.getTypes().stream().map(Object::toString).toArray(String[]::new)));
+                o.addProperty("manaValue", info == null ? 0 : info.getManaValue());
+                JsonArray types = new JsonArray();
+                if (info != null) {
+                    info.getTypes().forEach(t -> types.add(t.name()));
+                }
+                o.add("types", types);
+                o.add("rules", new JsonArray());
+                o.add("counters", new JsonArray());
+                o.add("targets", new JsonArray());
+            }
+            list.add(o);
+        }
+        return list;
+    }
+
+    private static int intOr(JsonObject o, String key, int fallback) {
+        JsonElement e = o.get(key);
+        try {
+            return e == null || e.isJsonNull() ? fallback : e.getAsInt();
+        } catch (RuntimeException ex) {
+            return fallback;
+        }
+    }
+
+    private static <E extends Enum<E>> E enumOr(Class<E> type, String name, E fallback) {
+        if (name == null) {
+            return fallback;
+        }
+        try {
+            return Enum.valueOf(type, name);
+        } catch (IllegalArgumentException e) {
+            return fallback;
+        }
     }
 
     private void respond(JsonObject msg) throws GatewayException {
@@ -459,6 +640,8 @@ final class ClientSession implements MageClient {
                     currentGame = game;
                     lastGameEvent = null;
                     chatHistory.clear();
+                    sideboardDeck = null;
+                    sideboardEvent = null;
                 }
                 // same as the Swing client: open the game chat (it carries the game log), then join
                 commands.execute(() -> {
@@ -546,6 +729,26 @@ final class ClientSession implements MageClient {
 
             case USER_REQUEST_DIALOG:
                 sendEvent(method.name(), objectId, messageId, ViewMapper.userRequest((UserRequestMessage) data));
+                break;
+
+            case SIDEBOARD:
+            case CONSTRUCT: {
+                TableClientMessage message = (TableClientMessage) data;
+                JsonObject o = ViewMapper.tableMessage(message);
+                o.addProperty("time", message.getTime());
+                o.add("deck", deckJson(message.getDeck()));
+                String json = event(method.name(), objectId, messageId, o);
+                synchronized (this) {
+                    sideboardDeck = message.getDeck();
+                    sideboardEvent = json;
+                }
+                sendRaw(json);
+                break;
+            }
+
+            case VIEW_SIDEBOARD:
+            case VIEW_LIMITED_DECK:
+                sendEvent(method.name(), objectId, messageId, ViewMapper.tableMessage((TableClientMessage) data));
                 break;
 
             case JOINED_TABLE:

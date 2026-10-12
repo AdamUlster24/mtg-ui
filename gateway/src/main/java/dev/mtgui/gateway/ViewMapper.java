@@ -5,6 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
+import mage.abilities.icon.CardIcon;
 import mage.choices.Choice;
 import mage.players.PlayableObjectStats;
 import mage.players.PlayableObjectsList;
@@ -103,7 +104,36 @@ final class ViewMapper {
         }
         o.add("lookedAt", lookedAt);
 
+        // hands of players this player controls (Mindslaver effects) and, for watchers, hands they may see
+        o.add("opponentHands", hands(view.getOpponentHands()));
+        o.add("watchedHands", hands(view.getWatchedHands()));
+        // XMage's own helper objects for the player (e.g. reminders it generates), shown like emblems
+        o.add("helperEmblems", cards(view.getMyHelperEmblems(), canPlay));
+        // chess clock settings of the table, in seconds (0 = no clock)
+        o.addProperty("priorityTime", view.getPriorityTime());
+        o.addProperty("bufferTime", view.getBufferTime());
+        // server health counters, shown in the Swing client's debug title only
+        o.addProperty("totalErrorsCount", view.getTotalErrorsCount());
+        o.addProperty("totalEffectsCount", view.getTotalEffectsCount());
+        o.addProperty("gameCycle", view.getGameCycle());
+
         return o;
+    }
+
+    private static JsonArray hands(Map<String, SimpleCardsView> hands) {
+        JsonArray list = new JsonArray();
+        for (Map.Entry<String, SimpleCardsView> hand : hands.entrySet()) {
+            JsonObject entry = new JsonObject();
+            entry.addProperty("id", hand.getKey());
+            entry.addProperty("name", hand.getKey());
+            JsonArray cards = new JsonArray();
+            for (SimpleCardView c : hand.getValue().values()) {
+                cards.add(c instanceof CardView ? card((CardView) c, null) : simpleCard(c));
+            }
+            entry.add("cards", cards);
+            list.add(entry);
+        }
+        return list;
     }
 
     private static JsonObject namedCards(String id, String name, CardsView cards, PlayableObjectsList canPlay) {
@@ -125,8 +155,21 @@ final class ViewMapper {
         o.addProperty("active", p.isActive());
         o.addProperty("hasPriority", p.hasPriority());
         o.addProperty("hasLeft", p.hasLeft());
+        o.addProperty("human", p.isHuman());
         o.addProperty("timerActive", p.isTimerActive());
         o.addProperty("priorityTimeLeftSecs", p.getPriorityTimeLeftSecs());
+        o.addProperty("bufferTimeLeft", p.getBufferTimeLeft());
+        // which "pass until ..." mode the player has switched on
+        o.addProperty("passedTurn", p.isPassedTurn());
+        o.addProperty("passedUntilEndOfTurn", p.isPassedUntilEndOfTurn());
+        o.addProperty("passedUntilNextMain", p.isPassedUntilNextMain());
+        o.addProperty("passedUntilStackResolved", p.isPassedUntilStackResolved());
+        o.addProperty("passedAllTurns", p.isPassedAllTurns());
+        o.addProperty("passedUntilEndStepBeforeMyTurn", p.isPassedUntilEndStepBeforeMyTurn());
+        // auras attached to the player (curses)
+        o.add("attachments", ids(p.getAttachments()));
+        o.addProperty("flag", p.getUserData() == null ? null : p.getUserData().getFlagName());
+        o.addProperty("avatarId", p.getUserData() == null ? 0 : p.getUserData().getAvatarId());
         // > 0: the player has something XMage can undo (mana tapped while holding priority)
         o.addProperty("undoSteps", p.getStatesSavedSize());
         o.addProperty("monarch", p.isMonarch());
@@ -149,6 +192,8 @@ final class ViewMapper {
         o.add("graveyard", cards(p.getGraveyard(), canPlay));
         o.add("exile", cards(p.getExile(), canPlay));
         o.add("topCard", p.getTopCard() == null ? JsonNull.INSTANCE : card(p.getTopCard(), canPlay));
+        // own sideboard (wish effects, companions); empty for the opponent
+        o.add("sideboard", cards(p.getSideboard(), canPlay));
 
         JsonArray battlefield = new JsonArray();
         for (PermanentView permanent : p.getBattlefield().values()) {
@@ -176,6 +221,13 @@ final class ViewMapper {
         o.addProperty("set", c.getExpansionSetCode());
         o.addProperty("imageFileName", c.getImageFileName());
         o.addProperty("imageNumber", c.getImageNumber());
+        if (c instanceof EmblemView) {
+            o.addProperty("number", ((EmblemView) c).getCardNumber());
+            o.addProperty("usesVariousArt", ((EmblemView) c).getUsesVariousArt());
+        }
+        o.add("types", new JsonArray());
+        o.add("counters", new JsonArray());
+        o.add("targets", new JsonArray());
         o.add("rules", strings(c.getRules()));
         o.addProperty("choosable", c.isChoosable());
         o.addProperty("selected", c.isSelected());
@@ -203,6 +255,8 @@ final class ViewMapper {
         o.addProperty("id", str(c.getId()));
         o.addProperty("set", c.getExpansionSetCode());
         o.addProperty("number", c.getCardNumber());
+        o.addProperty("usesVariousArt", c.getUsesVariousArt());
+        o.addProperty("gameObject", c.isGameObject());
         o.addProperty("choosable", c.isChoosable());
         o.addProperty("selected", c.isSelected());
         return o;
@@ -251,6 +305,59 @@ final class ViewMapper {
         o.add("targets", ids(c.getTargets()));
         o.addProperty("parentId", str(c.getParentId()));
         o.addProperty("pairedCard", str(c.getPairedCard()));
+        o.add("bandedCards", ids(c.getBandedCards()));
+        o.addProperty("displayFullName", c.getDisplayFullName());
+        o.addProperty("startingLoyalty", c.getStartingLoyalty());
+        o.addProperty("startingDefense", c.getStartingDefense());
+        JsonArray subTypes = new JsonArray();
+        if (c.getSubTypes() != null) {
+            c.getSubTypes().forEach(t -> subTypes.add(t.getDescription()));
+        }
+        o.add("subTypes", subTypes);
+        o.add("superTypes", enums(c.getSuperTypes()));
+        o.addProperty("frameStyle", c.getFrameStyle() == null ? null : c.getFrameStyle().name());
+        o.addProperty("artRect", c.getArtRect() == null ? null : c.getArtRect().name());
+        o.addProperty("extraDeckCard", c.isExtraDeckCard());
+        o.addProperty("rotate", c.isToRotate());
+        // the other name of adventure / flip / double faced cards
+        o.addProperty("alternateName", c.getAlternateName());
+        if (c.isSplitCard()) {
+            JsonObject left = new JsonObject();
+            left.addProperty("name", c.getLeftSplitName());
+            left.addProperty("manaCost", c.getLeftSplitCostsStr());
+            left.addProperty("typeLine", c.getLeftSplitTypeLine());
+            left.add("rules", rules(c.getLeftSplitRules(), c.getLeftSplitName()));
+            o.add("leftHalf", left);
+            JsonObject right = new JsonObject();
+            right.addProperty("name", c.getRightSplitName());
+            right.addProperty("manaCost", c.getRightSplitCostsStr());
+            right.addProperty("typeLine", c.getRightSplitTypeLine());
+            right.add("rules", rules(c.getRightSplitRules(), c.getRightSplitName()));
+            // "Adventure", "Omen", ... for cards whose second half is a spell of the same card
+            right.addProperty("spellType", c.getRightSplitSpellType());
+            o.add("rightHalf", right);
+        }
+        JsonArray icons = new JsonArray();
+        if (c.getCardIcons() != null) {
+            for (CardIcon icon : c.getCardIcons()) {
+                JsonObject i = new JsonObject();
+                i.addProperty("type", icon.getIconType().name());
+                i.addProperty("text", icon.getText());
+                i.addProperty("hint", icon.getHint());
+                icons.add(i);
+            }
+        }
+        o.add("icons", icons);
+        // printed values, to show what an effect changed
+        if (c.getOriginalPower() != null && c.getOriginalToughness() != null) {
+            o.addProperty("basePower", c.getOriginalPower().getModifiedBaseValue());
+            o.addProperty("baseToughness", c.getOriginalToughness().getModifiedBaseValue());
+        }
+        o.addProperty("colorIdentity", c.getOriginalColorIdentity());
+        o.addProperty("originalIsCopy", c.isOriginalACopy());
+        if (depth < 2 && c.getAbility() != null) {
+            o.add("ability", card(c.getAbility(), null, depth + 1));
+        }
 
         // playable info lives on the GameView, the Swing client copies it onto each card too
         PlayableObjectStats stats = canPlay == null ? null : canPlay.getStats(c.getId());
@@ -289,6 +396,18 @@ final class ViewMapper {
             o.addProperty("disguised", p.isDisguised());
             o.addProperty("manifested", p.isManifested());
             o.addProperty("cloaked", p.isCloaked());
+            o.addProperty("attachedControllerDiffers", p.isAttachedToDifferentlyControlledPermanent());
+            o.addProperty("mutated", p.isMutated());
+            if (p.getMutateView() != null) {
+                JsonObject mutate = new JsonObject();
+                mutate.addProperty("id", str(p.getMutateView().getId()));
+                mutate.addProperty("name", p.getMutateView().getName());
+                o.add("mutateView", mutate);
+            }
+            // what a face-down / copied / transformed permanent really is, when this player may know
+            if (depth < 2 && p.getOriginal() != null) {
+                o.add("original", card(p.getOriginal(), null, depth + 1));
+            }
         }
         return o;
     }
@@ -427,6 +546,14 @@ final class ViewMapper {
         o.addProperty("stateText", t.getTableStateText());
         o.addProperty("info", t.getAdditionalInfoShort());
         o.addProperty("passworded", t.isPassworded());
+        o.addProperty("infoFull", t.getAdditionalInfoFull());
+        o.addProperty("seatsInfo", t.getSeatsInfo());
+        o.addProperty("createTime", t.getCreateTime() == null ? null : t.getCreateTime().getTime());
+        o.addProperty("skillLevel", t.getSkillLevel() == null ? null : t.getSkillLevel().name());
+        o.addProperty("rated", t.isRated());
+        o.addProperty("limited", t.isLimited());
+        o.addProperty("tournament", t.isTournament());
+        o.addProperty("spectatorsAllowed", t.getSpectatorsAllowed());
         JsonArray seats = new JsonArray();
         for (SeatView s : t.getSeats()) {
             JsonObject seat = new JsonObject();
@@ -448,6 +575,7 @@ final class ViewMapper {
         o.addProperty("message", m.getMessage());
         o.addProperty("color", m.getColor() == null ? null : m.getColor().name());
         o.addProperty("messageType", m.getMessageType() == null ? null : m.getMessageType().name());
+        o.addProperty("sound", m.getSoundToPlay() == null ? null : m.getSoundToPlay().name());
         return o;
     }
 
@@ -471,6 +599,31 @@ final class ViewMapper {
         o.addProperty("wins", v.getWins());
         o.addProperty("loses", v.getLoses());
         o.addProperty("winsNeeded", v.getWinsNeeded());
+        o.addProperty("startTime", v.getStartTime() == null ? null : v.getStartTime().getTime());
+        o.addProperty("endTime", v.getEndTime() == null ? null : v.getEndTime().getTime());
+        // the match goes on with another game (after sideboarding) until someone has the wins needed
+        o.addProperty("matchOver", v.getWins() >= v.getWinsNeeded() || v.getLoses() >= v.getWinsNeeded());
+        JsonArray players = new JsonArray();
+        for (PlayerView p : v.getPlayers()) {
+            JsonObject player = new JsonObject();
+            player.addProperty("name", p.getName());
+            player.addProperty("life", p.getLife());
+            player.addProperty("wins", p.getWins());
+            player.addProperty("hasLeft", p.hasLeft());
+            players.add(player);
+        }
+        o.add("players", players);
+        if (v.getMatchView() != null) {
+            MatchView m = v.getMatchView();
+            JsonObject match = new JsonObject();
+            match.addProperty("name", m.getMatchName());
+            match.addProperty("gameType", m.getGameType());
+            match.addProperty("deckType", m.getDeckType());
+            match.addProperty("players", m.getPlayers());
+            match.addProperty("result", m.getResult());
+            match.addProperty("games", m.getGames() == null ? 0 : m.getGames().size());
+            o.add("match", match);
+        }
         return o;
     }
 
