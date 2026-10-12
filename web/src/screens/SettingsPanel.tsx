@@ -21,21 +21,21 @@ const STOPS: [Flag, string, string][] = [
   ['stopOnDeclareAttackers', 'Stop to declare attackers while passing', 'F4 / F5 / F7 still stop when you could attack'],
   ['stopOnDeclareBlockersWithAnyPermanents', 'Stop to declare blockers when I have possible blockers', ''],
   ['stopOnDeclareBlockersWithZeroPermanents', 'Stop to declare blockers even when I have none', ''],
-  ['stopOnAllMainPhases', 'F9 stops at every main phase', 'instead of only on my next turn'],
-  ['stopOnAllEndPhases', 'F11 stops at every end step', 'instead of only before my next turn'],
-  ['stopOnStackNewObjects', 'Stop passing when something new goes on the stack', 'so I can respond to it'],
+  ['stopOnAllMainPhases', 'F7 (until next main phase) also stops in the opponent\'s main phases', 'off: only in my own'],
+  ['stopOnAllEndPhases', 'F5 (until end step) also stops at my own end step', 'off: only at the opponent\'s'],
+  ['stopOnStackNewObjects', 'F10 (until the stack resolves) stops when something new goes on the stack', 'on my turn, so I can respond'],
 ]
 
 const PLAY: [Flag, string, string][] = [
   ['manaPoolAutomatic', 'Spend mana from my pool automatically', ''],
-  ['manaPoolAutomaticRestricted', 'Never spend restricted mana from the pool automatically', 'mana that can only pay for certain things'],
+  ['manaPoolAutomaticRestricted', 'Do not spend mana automatically that was in my pool before I started casting', 'only mana made while paying is used by itself'],
   ['useFirstManaAbility', 'Tapping a land uses its first mana ability', 'no question for lands with several'],
   ['confirmEmptyManaPool', 'Ask before passing with mana left in my pool', ''],
   ['passPriorityCast', 'Pass priority right after I cast a spell', ''],
   ['passPriorityActivation', 'Pass priority right after I activate an ability', ''],
   ['autoOrderTrigger', 'Order my triggers by itself when the order does not matter', ''],
   ['askMoveToGraveOrder', 'Ask for the order when several cards go to my graveyard', ''],
-  ['useSameSettingsForReplacementEffects', 'Remember my choice between replacement effects', 'for the same set of effects'],
+  ['useSameSettingsForReplacementEffects', 'A remembered choice between replacement effects counts for every copy of the card', 'off: only for that one object'],
   ['allowRequestShowHandCards', 'Let the opponent ask to see my hand', ''],
 ]
 

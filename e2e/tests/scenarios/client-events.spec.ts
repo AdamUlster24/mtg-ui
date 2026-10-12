@@ -52,8 +52,8 @@ test('the "pay X mana" prompt is answered with OK or Cancel', async ({ browser }
   await a.page.locator('.prompt-buttons button', { hasText: 'Cancel' }).click()
   sent.push(...(await a.page.evaluate(() => (window as any).sent)))
   expect(sent).toContainEqual(['boolean', false])
-  // the real game is still there: the server answers the stray reply with its current prompt
-  await until(a, 'the real prompt again', (x) => x.prompt?.method === 'GAME_SELECT' && x.prompt.messageId !== 9001)
+  // the real game is still there and carries on (the stray "no" counted as passing priority)
+  await until(a, 'the real game again', (x) => !!x.prompt && x.prompt.messageId !== 9001)
   await finish(table)
 })
 

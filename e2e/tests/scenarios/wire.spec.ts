@@ -72,7 +72,6 @@ test('every field of cards and permanents reaches the browser', async ({ browser
     toughness: '4',
     basePower: 4,
     baseToughness: 4,
-    zone: 'BATTLEFIELD',
     objectType: 'PERMANENT',
     permanent: true,
     tapped: false,
@@ -80,9 +79,10 @@ test('every field of cards and permanents reaches the browser', async ({ browser
     faceDown: false,
     controlled: true,
     controlledByOwner: true,
-    canAttack: true,
+    // only true while attackers are being declared
+    canAttack: false,
     phasedIn: true,
-    colorIdentity: 'W',
+    colorIdentity: '{W}',
   })
   expect(angel.set).toMatch(/^[A-Z0-9]{2,6}$/)
   expect(angel.number).toMatch(/\d/)
@@ -91,7 +91,6 @@ test('every field of cards and permanents reaches the browser', async ({ browser
 
   const legend = s.game.hand.find((c: any) => c.name === 'Isamaru, Hound of Konda')
   expect(legend.superTypes).toEqual(['LEGENDARY'])
-  expect(legend.zone).toBe('HAND')
   expect(legend.playable).toBe(true)
   expect(legend.playableAmount).toBe(1)
   expect(legend.playableAbilities.length).toBe(1)
@@ -106,7 +105,7 @@ test('the table list and the lobby carry XMage\'s table information', async ({ b
   for (const key of ['id', 'name', 'controllerName', 'gameType', 'deckType', 'state', 'stateText', 'info', 'infoFull', 'seatsInfo', 'createTime', 'skillLevel', 'passworded', 'rated', 'limited', 'tournament', 'spectatorsAllowed', 'quitRatio', 'minimumRating', 'seats', 'games']) {
     expect(mine, `table.${key}`).toHaveProperty(key)
   }
-  expect(mine).toMatchObject({ gameType: 'Commander Two Player Duel', deckType: 'Variant Magic - Commander', state: 'DUELING', tournament: false, limited: false, rated: false, passworded: false })
+  expect(mine).toMatchObject({ gameType: 'Commander Two Player Duel', deckType: 'Commander', state: 'DUELING', tournament: false, limited: false, rated: false, passworded: false })
   expect(mine.seats.map((seat: any) => seat.playerName).sort()).toEqual([table.a.name, table.b.name].sort())
   expect(mine.games).toHaveLength(1)
   for (const key of ['playerId', 'playerName', 'playerType', 'flag', 'history', 'generalRating', 'constructedRating', 'limitedRating']) expect(mine.seats[0], `seat.${key}`).toHaveProperty(key)

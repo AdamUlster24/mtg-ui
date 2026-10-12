@@ -50,14 +50,21 @@ function ChoiceDialog({ prompt }: { prompt: Prompt }) {
   const respond = useStore((s) => s.respond)
   const choice = prompt.data.choice!
   const [filter, setFilter] = useState('')
+  const [special, setSpecial] = useState(false)
   const items = choice.items.filter((i) => plain(i.text).toLowerCase().includes(filter.toLowerCase()))
   return (
     <Modal title={plain(choice.message) || 'Choose'} onClose={choice.required ? undefined : () => respond('string', null)}>
       {choice.subMessage && <p className="muted">{plain(choice.subMessage)}</p>}
+      {choice.specialEnabled && (
+        <label className="setting" data-choice-special>
+          <input type="checkbox" checked={special} onChange={(e) => setSpecial(e.target.checked)} />
+          <span>{plain(choice.specialText) || 'Remember this choice'}</span>
+        </label>
+      )}
       {choice.items.length > 12 && <input autoFocus placeholder="Filter…" value={filter} onChange={(e) => setFilter(e.target.value)} />}
       <div className="option-list">
         {items.map((item) => (
-          <button key={item.key} onClick={() => respond('string', item.key)}>
+          <button key={item.key} onClick={() => respond('string', (special ? '#' : '') + item.key)}>
             <RichText html={item.text} />
           </button>
         ))}

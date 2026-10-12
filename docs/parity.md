@@ -525,13 +525,13 @@ either **done**, with the Playwright test that proves it, or **out of scope** fo
 | `ROLLBACK_TURNS` | done | `e2e/tests/scenarios/match.spec.ts` › rolling back to the previous turn when the opponent agrees |
 | `UNDO` | done | `e2e/tests/scenarios/flow.spec.ts` › taking things back: cancel while paying, undo tapped mana |
 | `CONCEDE` | done | `e2e/tests/scenarios/more.spec.ts` › conceding the game gives the opponent the win |
-| `MANA_AUTO_PAYMENT_ON` | done | `e2e/tests/scenarios/prompts.spec.ts` › ability picker and paying from the mana pool — set through the settings, which XMage applies the same way |
-| `MANA_AUTO_PAYMENT_OFF` | done | `e2e/tests/scenarios/prompts.spec.ts` › ability picker and paying from the mana pool — set through the settings, which XMage applies the same way |
-| `MANA_AUTO_PAYMENT_RESTRICTED_ON` | done | `e2e/tests/scenarios/more.spec.ts` › restricted mana is spent automatically, or only by hand — set through the settings |
-| `MANA_AUTO_PAYMENT_RESTRICTED_OFF` | done | `e2e/tests/scenarios/more.spec.ts` › restricted mana is spent automatically, or only by hand — set through the settings |
-| `USE_FIRST_MANA_ABILITY_ON` | done | `e2e/tests/scenarios/settings.spec.ts` › tapping a land with several mana abilities: asks, or uses the first — set through the settings |
-| `USE_FIRST_MANA_ABILITY_OFF` | done | `e2e/tests/scenarios/settings.spec.ts` › tapping a land with several mana abilities: asks, or uses the first — set through the settings |
-| `RESET_AUTO_SELECT_REPLACEMENT_EFFECTS` | done | `e2e/tests/scenarios/more.spec.ts` › replacement effects: the choice is remembered, or asked every time |
+| `MANA_AUTO_PAYMENT_ON` | done | `e2e/tests/scenarios/prompts.spec.ts` › ability picker and paying from the mana pool — sent when the setting is changed during a game |
+| `MANA_AUTO_PAYMENT_OFF` | done | `e2e/tests/scenarios/prompts.spec.ts` › ability picker and paying from the mana pool — sent when the setting is changed during a game |
+| `MANA_AUTO_PAYMENT_RESTRICTED_ON` | done | `e2e/tests/scenarios/more.spec.ts` › mana that was already in the pool: spent by hand, or automatically — sent when the setting is changed during a game |
+| `MANA_AUTO_PAYMENT_RESTRICTED_OFF` | done | `e2e/tests/scenarios/more.spec.ts` › mana that was already in the pool: spent by hand, or automatically — sent when the setting is changed during a game |
+| `USE_FIRST_MANA_ABILITY_ON` | done | `e2e/tests/scenarios/settings.spec.ts` › tapping a land with several mana abilities: asks, or uses the first — sent when the setting is changed during a game |
+| `USE_FIRST_MANA_ABILITY_OFF` | done | `e2e/tests/scenarios/settings.spec.ts` › tapping a land with several mana abilities: asks, or uses the first — sent when the setting is changed during a game |
+| `RESET_AUTO_SELECT_REPLACEMENT_EFFECTS` | done | `e2e/tests/scenarios/more.spec.ts` › replacement effects: a remembered choice, for one object or for every copy |
 | `REVOKE_PERMISSIONS_TO_SEE_HAND_CARDS` | done | `e2e/tests/scenarios/match.spec.ts` › asking to see the opponent's hand: refused by default, shown when they allow it |
 | `REQUEST_PERMISSION_TO_SEE_HAND_CARDS` | done | `e2e/tests/scenarios/match.spec.ts` › asking to see the opponent's hand: refused by default, shown when they allow it |
 | `REQUEST_PERMISSION_TO_ROLLBACK_TURN` | done | `e2e/tests/scenarios/match.spec.ts` › rolling back to the previous turn when the opponent agrees |
@@ -590,12 +590,12 @@ either **done**, with the Playwright test that proves it, or **out of scope** fo
 | `UserData.flagName` | done | `e2e/tests/scenarios/settings.spec.ts` › settings are kept in the browser, reach the server and can be reset |
 | `UserData.askMoveToGraveOrder` | done | `e2e/tests/scenarios/settings.spec.ts` › graveyard order: asked when several cards go there at once, if wanted |
 | `UserData.manaPoolAutomatic` | done | `e2e/tests/scenarios/prompts.spec.ts` › ability picker and paying from the mana pool |
-| `UserData.manaPoolAutomaticRestricted` | done | `e2e/tests/scenarios/more.spec.ts` › restricted mana is spent automatically, or only by hand |
+| `UserData.manaPoolAutomaticRestricted` | done | `e2e/tests/scenarios/more.spec.ts` › mana that was already in the pool: spent by hand, or automatically |
 | `UserData.passPriorityCast` | done | `e2e/tests/scenarios/controls.spec.ts` › pass priority after casting, unless holding priority |
 | `UserData.passPriorityActivation` | done | `e2e/tests/scenarios/controls.spec.ts` › pass priority after activating an ability |
 | `UserData.autoOrderTrigger` | done | `e2e/tests/scenarios/more.spec.ts` › identical triggers: ordered automatically, or asked |
 | `UserData.autoTargetLevel` | done | `e2e/tests/scenarios/settings.spec.ts` › automatic targeting level |
-| `UserData.useSameSettingsForReplacementEffects` | done | `e2e/tests/scenarios/more.spec.ts` › replacement effects: the choice is remembered, or asked every time |
+| `UserData.useSameSettingsForReplacementEffects` | done | `e2e/tests/scenarios/more.spec.ts` › replacement effects: a remembered choice, for one object or for every copy |
 | `UserData.useFirstManaAbility` | done | `e2e/tests/scenarios/settings.spec.ts` › tapping a land with several mana abilities: asks, or uses the first |
 | `UserData.userIdStr` | done | `e2e/tests/scenarios/settings.spec.ts` › settings are kept in the browser, reach the server and can be reset — set by the gateway (player role, no client id) |
 | `UserData.requestedHandPlayersList` | done | `e2e/tests/scenarios/match.spec.ts` › asking to see the opponent's hand: refused by default, shown when they allow it |
@@ -628,9 +628,9 @@ either **done**, with the Playwright test that proves it, or **out of scope** fo
 | `stopOnDeclareAttackers` | done | `e2e/tests/scenarios/settings.spec.ts` › stop to declare attackers while passing, or not |
 | `stopOnDeclareBlockersWithZeroPermanents` | done | `e2e/tests/scenarios/settings.spec.ts` › while passing: stop when attacked, with possible blockers and even without any |
 | `stopOnDeclareBlockersWithAnyPermanents` | done | `e2e/tests/scenarios/settings.spec.ts` › while passing: stop when attacked, with possible blockers and even without any |
-| `stopOnAllMainPhases` | done | `e2e/tests/scenarios/more.spec.ts` › F9 and F11 stop at every main phase and end step, or only before my turn |
-| `stopOnAllEndPhases` | done | `e2e/tests/scenarios/more.spec.ts` › F9 and F11 stop at every main phase and end step, or only before my turn |
-| `stopOnStackNewObjects` | done | `e2e/tests/scenarios/more.spec.ts` › while passing: stop when something new goes on the stack, or not |
+| `stopOnAllMainPhases` | done | `e2e/tests/scenarios/more.spec.ts` › F7 and F5: stopping in the opponent's main phases and at my own end step |
+| `stopOnAllEndPhases` | done | `e2e/tests/scenarios/more.spec.ts` › F7 and F5: stopping in the opponent's main phases and at my own end step |
+| `stopOnStackNewObjects` | done | `e2e/tests/scenarios/more.spec.ts` › F10: passing until the stack resolves stops for something new, or not |
 
 ## Swing game panel: menus
 
@@ -657,10 +657,10 @@ either **done**, with the Playwright test that proves it, or **out of scope** fo
 | `F11 - Everything until end step prior to your own next turn` | done | `e2e/tests/scenarios/more.spec.ts` › every pass-until key and menu entry sends XMage's action |
 | `Mana payment` | done | `e2e/tests/scenarios/prompts.spec.ts` › ability picker and paying from the mana pool |
 | `Automatically` | done | `e2e/tests/scenarios/prompts.spec.ts` › ability picker and paying from the mana pool |
-| `No automatic usage for mana already in the pool` | done | `e2e/tests/scenarios/more.spec.ts` › restricted mana is spent automatically, or only by hand |
+| `No automatic usage for mana already in the pool` | done | `e2e/tests/scenarios/more.spec.ts` › mana that was already in the pool: spent by hand, or automatically |
 | `Use first mana ability when tapping lands` | done | `e2e/tests/scenarios/settings.spec.ts` › tapping a land with several mana abilities: asks, or uses the first |
 | `Auto-answers` | done | `e2e/tests/scenarios/controls.spec.ts` › a yes/no question can be answered once and for all, and that can be reset |
-| `Replacement effects - reset all auto-answers` | done | `e2e/tests/scenarios/more.spec.ts` › replacement effects: the choice is remembered, or asked every time |
+| `Replacement effects - reset all auto-answers` | done | `e2e/tests/scenarios/more.spec.ts` › replacement effects: a remembered choice, for one object or for every copy |
 | `Triggered abilities - reset all auto-answers for stack order` | done | `e2e/tests/scenarios/controls.spec.ts` › trigger order can be remembered and forgotten |
 | `Yes/no requests - reset all auto-answers` | done | `e2e/tests/scenarios/controls.spec.ts` › a yes/no question can be answered once and for all, and that can be reset |
 | `Rollback` | done | `e2e/tests/scenarios/flow.spec.ts` › asking the opponent to restart the turn |

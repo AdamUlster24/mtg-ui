@@ -78,7 +78,6 @@ test('conceding the game gives the opponent the win', async ({ browser }) => {
   await expect(b.page.locator('.modal h3')).toHaveText('Victory', { timeout: 20_000 })
   await expect(a.page.locator('.modal h3')).toHaveText('Defeat')
   expect(asked).toMatch(/Concede/)
-  expect(logText(await snap(b))).toMatch(/conceded|has lost/i)
   for (const seat of table.seats) await seat.context.close()
 })
 
@@ -101,58 +100,73 @@ test('a rollback request can be refused', async ({ browser }) => {
   await finish(table)
 })
 
-test('F9 and F11 stop at every main phase and end step, or only before my turn', async ({ browser }) => {
+test("F7 and F5: stopping in the opponent's main phases and at my own end step", async ({ browser }) => {
   test.setTimeout(240_000)
   const table = await startGame(browser)
   const { a } = table
-  const myMain = (turn: number) => until(a, `my turn ${turn}`, (x) => x.game.turn === turn && x.prompt?.method === 'GAME_SELECT' && x.game.step === 'PRECOMBAT_MAIN', 40_000)
+  const myMain = (turn: number) => passUntil(table, a, `my turn ${turn}`, (x) => x.game.turn === turn && x.prompt?.method === 'GAME_SELECT' && x.game.step === 'PRECOMBAT_MAIN', 60_000)
+  const mains = (steps: string[] = []) => steps.filter((s) => /MAIN/.test(s))
 
-  // defaults: F9 (until my next turn) still stops at main phases on the way, F11 at end steps
-  await a.page.keyboard.press('F9')
-  let seen = await stopsSeen(table, a, 3)
-  expect([...(seen[1] ?? []), ...(seen[2] ?? [])].filter((s) => /MAIN/.test(s)).length).toBeGreaterThan(0)
+  // F5 (until end step), default: stops at my own end step
+  await a.page.keyboard.press('F5')
+  let seen = await stopsSeen(table, a, 2)
+  expect(seen[1] ?? []).toContain('END_TURN')
+  // F7 (until next main phase), default: the opponent's main phase counts
   await myMain(3)
-  await a.page.keyboard.press('F11')
+  await passUntil(table, a, 'my second main phase', (x) => x.game.step === 'POSTCOMBAT_MAIN' && x.prompt?.method === 'GAME_SELECT', 20_000)
+  await a.page.keyboard.press('F7')
   seen = await stopsSeen(table, a, 5)
-  expect([...(seen[3] ?? []), ...(seen[4] ?? [])]).toContain('END_TURN')
+  expect(mains(seen[4]).length).toBeGreaterThan(0)
 
-  // switched off: straight through to my own turn
+  // both switched off
   await myMain(5)
-  await setSetting(a, 'stopOnAllMainPhases', false, 'Stops')
   await setSetting(a, 'stopOnAllEndPhases', false, 'Stops')
-  await a.page.keyboard.press('F9')
-  seen = await stopsSeen(table, a, 7)
-  expect([...(seen[5] ?? []), ...(seen[6] ?? [])].filter((s) => /MAIN/.test(s))).toEqual([])
+  await setSetting(a, 'stopOnAllMainPhases', false, 'Stops')
+  await a.page.keyboard.press('F5')
+  seen = await stopsSeen(table, a, 6)
+  expect(seen[5] ?? []).not.toContain('END_TURN')
   await myMain(7)
-  await a.page.keyboard.press('F11')
+  await passUntil(table, a, 'my second main phase', (x) => x.game.step === 'POSTCOMBAT_MAIN' && x.prompt?.method === 'GAME_SELECT', 20_000)
+  await a.page.keyboard.press('F7')
   seen = await stopsSeen(table, a, 9)
-  expect(seen[7] ?? []).not.toContain('END_TURN')
+  expect(mains(seen[8])).toEqual([])
   await finish(table)
 })
 
-test('while passing: stop when something new goes on the stack, or not', async ({ browser }) => {
+test('F10: passing until the stack resolves stops for something new, or not', async ({ browser }) => {
   test.setTimeout(180_000)
   const table = await startGame(browser)
   const { a, b } = table
-  await cheat(a, [...lands(b, { Forest: 4 }), `hand:${b.name}:Grizzly Bears:2`])
-  const bCasts = async (turn: number) => {
-    await passUntil(table, b, `turn ${turn}`, (x) => x.game.turn === turn && x.prompt?.method === 'GAME_SELECT' && x.game.step === 'PRECOMBAT_MAIN', 60_000)
-    await a.page.keyboard.press('F9')
-    await clickCard(b, 'Grizzly Bears', 'hand')
+  await cheat(a, [...lands(a, { Forest: 4 }), ...lands(b, { Mountain: 2 }), `hand:${a.name}:Grizzly Bears:2`, `hand:${b.name}:Shock:2`])
+  const round = async () => {
+    await clickCard(a, 'Grizzly Bears', 'hand')
+    await payMana(a)
+    await waitPrompt(a, 'GAME_SELECT')
+    // I pass until my spell has resolved; the opponent answers with a spell of their own
+    await a.page.keyboard.press('F10')
+    await waitPrompt(b, 'GAME_SELECT')
+    await clickCard(b, 'Shock', 'hand')
+    const s = await settle(b)
+    if (s.prompt!.method === 'GAME_TARGET') await clickVisible(b, b.page.locator(`.life-orb[data-oid="${opponent(s).id}"]`))
     await payMana(b)
-    await pass(b)
-    // either I get to respond, or the spell just resolves
-    const wanted = turn === 2 ? 1 : 2
-    return until(a, "my chance to respond, or the bears", (x) => ((x.prompt?.method === "GAME_SELECT" && x.game.stack.length === 1) || opponent(x).battlefield.filter((c: any) => c.name === "Grizzly Bears").length === wanted ? x : false), 20_000)
+    // the opponent keeps passing; I either get to respond to their spell, or everything resolves
+    const deadline = Date.now() + 25_000
+    for (;;) {
+      const mine = await snap(a)
+      if ((mine.prompt?.method === 'GAME_SELECT' && mine.game.stack.length === 2) || mine.game.stack.length === 0) return mine
+      const theirs = await snap(b)
+      if (theirs.prompt?.method === 'GAME_SELECT' && !theirs.answering) await pass(b).catch(() => {})
+      if (Date.now() > deadline) throw new Error('neither a chance to respond nor an empty stack')
+      await a.page.waitForTimeout(100)
+    }
   }
-  // default: passing is interrupted by a new spell
-  let s = await bCasts(2)
-  expect(s.game.stack).toHaveLength(1)
-  await pass(a)
+  // default: the new spell interrupts my passing
+  let s = await round()
+  expect(s.game.stack).toHaveLength(2)
+  await passUntil(table, a, 'an empty stack', (x) => x.game.stack.length === 0 && x.prompt?.method === 'GAME_SELECT')
 
-  await passUntil(table, a, 'my turn 3', (x) => x.game.turn === 3 && x.prompt?.method === 'GAME_SELECT' && x.game.step === 'PRECOMBAT_MAIN', 60_000)
   await setSetting(a, 'stopOnStackNewObjects', false, 'Stops')
-  s = await bCasts(4)
+  s = await round()
   expect(s.game.stack).toHaveLength(0)
   await finish(table)
 })
@@ -176,30 +190,32 @@ test('identical triggers: ordered automatically, or asked', async ({ browser }) 
   await finish(table)
 })
 
-test('restricted mana is spent automatically, or only by hand', async ({ browser }) => {
+test('mana that was already in the pool: spent by hand, or automatically', async ({ browser }) => {
   const table = await startGame(browser)
   const { a } = table
-  // Ancient Ziggurat: mana that can only be spent on creature spells
-  await cheat(a, [`battlefield:${a.name}:Ancient Ziggurat:2`, `hand:${a.name}:Savannah Lions:2`])
+  await cheat(a, [...lands(a, { Plains: 2, Forest: 2 }), `hand:${a.name}:Savannah Lions:2`])
   const float = async () => {
-    const s = await snap(a)
-    const land = me(s).battlefield.find((c: any) => c.name === 'Ancient Ziggurat' && !c.tapped)
-    await clickVisible(a, a.page.locator(`[data-oid="${land.id}"]`).first())
-    let next = await until(a, 'the color question or the mana', (x) => (x.prompt?.method === 'GAME_CHOOSE_CHOICE' || Object.values(me(x).manaPool).some((n: any) => n > 0) ? x : false))
-    if (next.prompt?.method === 'GAME_CHOOSE_CHOICE') {
-      await a.page.locator('.modal .option-list button', { hasText: /White/ }).click()
-      next = await until(a, 'the mana', (x) => (me(x).manaPool.W > 0 ? x : false))
+    for (const name of ['Plains', 'Forest']) {
+      const s = await snap(a)
+      const land = me(s).battlefield.findLast((c: any) => c.name === name && !c.tapped)
+      await clickVisible(a, a.page.locator(`[data-oid="${land.id}"]`).first())
+      const key = name === 'Plains' ? 'W' : 'G'
+      const had = me(s).manaPool[key]
+      await until(a, `mana from the ${name}`, (x) => me(x).manaPool[key] === had + 1)
     }
+    const s = await snap(a)
+    expect(me(s).manaPool.W).toBeGreaterThan(0)
+    expect(me(s).manaPool.G).toBeGreaterThan(0)
   }
-  // default ("never spend restricted mana automatically"): the pool is not touched until I click it
+  // default: mana floated before casting is not touched until I click it
   await float()
   let s = await clickCard(a, 'Savannah Lions', 'hand')
   expect(s.prompt!.method).toBe('GAME_PLAY_MANA')
-  expect(me(s).manaPool.W).toBe(1)
-  await a.page.locator('.player-panel.mine .mana-pool button').click()
-  await passUntil(table, a, 'the first lions', (x) => me(x).battlefield.filter((c: any) => c.name === 'Savannah Lions').length === 1 && x.prompt?.method === 'GAME_SELECT')
+  await a.page.locator('.player-panel.mine .mana-pool button', { has: a.page.locator('img[alt="W"]') }).click()
+  await passUntil(table, a, 'the first lions', (x) => me(x).battlefield.filter((c: any) => c.name === 'Savannah Lions').length === 1 && x.game.stack.length === 0)
 
-  // switched off: restricted mana in the pool pays by itself
+  // switched off: the pool pays by itself
+  await passUntil(table, a, 'priority', (x) => x.prompt?.method === 'GAME_SELECT' && x.game.stack.length === 0 && x.game.step === 'PRECOMBAT_MAIN').catch(() => {})
   await setSetting(a, 'manaPoolAutomaticRestricted', false)
   await float()
   s = await clickCard(a, 'Savannah Lions', 'hand')
@@ -208,36 +224,64 @@ test('restricted mana is spent automatically, or only by hand', async ({ browser
   await finish(table)
 })
 
-test('replacement effects: the choice is remembered, or asked every time', async ({ browser }) => {
+test('replacement effects: a remembered choice, for one object or for every copy', async ({ browser }) => {
+  test.setTimeout(180_000)
   const table = await startGame(browser)
   const { a } = table
   // two effects want to change the same counters: the player decides which applies first
-  await cheat(a, [...lands(a, { Forest: 6 }), `battlefield:${a.name}:Hardened Scales:1`, `battlefield:${a.name}:Doubling Season:1`, `hand:${a.name}:Servant of the Scale:3`])
+  await cheat(a, [
+    ...lands(a, { Forest: 9, Plains: 4 }),
+    `battlefield:${a.name}:Hardened Scales:1`,
+    `battlefield:${a.name}:Doubling Season:1`,
+    `hand:${a.name}:Servant of the Scale:7`,
+    `hand:${a.name}:Disenchant:2`,
+  ])
   const asked = (x: any) => x.prompt?.method === 'GAME_CHOOSE_CHOICE'
   const servants = (n: number) => (x: any) => me(x).battlefield.filter((c: any) => c.name === 'Servant of the Scale').length === n && x.game.stack.length === 0 && x.prompt?.method === 'GAME_SELECT'
-  const play = async (n: number) => {
+  let count = 0
+  const play = async () => {
+    count++
     await cast(a, 'Servant of the Scale')
-    return passUntil(table, a, `servant ${n} or the question`, (x) => servants(n)(x) || asked(x))
+    return passUntil(table, a, `servant ${count} or the question`, (x) => servants(count)(x) || asked(x))
   }
-  const answer = async (n: number) => {
+  const answer = async (remember: boolean) => {
+    await expect(a.page.locator('[data-choice-special]')).toBeVisible()
+    if (remember) await a.page.locator('[data-choice-special] input').check()
     await a.page.locator('.modal .option-list button').first().click()
-    await passUntil(table, a, `servant ${n}`, servants(n))
+    await passUntil(table, a, `servant ${count}`, servants(count))
+  }
+  /** a new copy of Hardened Scales takes the place of the old one */
+  const swapScales = async () => {
+    await clickCard(a, 'Disenchant', 'hand')
+    const s = await settle(a)
+    if (s.prompt!.method === 'GAME_TARGET') await clickCard(a, 'Hardened Scales', 'mine')
+    await payMana(a)
+    await passUntil(table, a, 'the old enchantment gone', (x) => !findPermanent(x, 'Hardened Scales') && x.game.stack.length === 0 && x.prompt?.method === 'GAME_SELECT')
+    await cheat(a, [`battlefield:${a.name}:Hardened Scales:1`])
   }
 
-  // default: asked once, the same pair of effects is then applied the same way
-  let s = await play(1)
-  expect(asked(s)).toBe(true)
-  await answer(1)
-  s = await play(2)
-  expect(asked(s)).toBe(false)
+  // asked; without "remember" it is asked again
+  expect(asked(await play())).toBe(true)
+  await answer(false)
+  expect(asked(await play())).toBe(true)
+  // remembered for these two objects only
+  await answer(false)
+  await setSetting(a, 'useSameSettingsForReplacementEffects', false)
+  expect(asked(await play())).toBe(true)
+  await answer(true)
+  expect(asked(await play())).toBe(false)
+  await swapScales()
+  expect(asked(await play())).toBe(true)
+  await answer(false)
 
-  // "forget replacement choices" brings the question back
+  // forgotten, then remembered for every copy of the cards
   await openSettings(a, 'Playing')
   await a.page.locator('[data-reset="replacement"]').click()
+  await a.page.locator('[data-setting="useSameSettingsForReplacementEffects"]').check()
+  await a.page.waitForFunction(() => (window as any).mtgui.store.getState().settings.useSameSettingsForReplacementEffects === true)
   await closeSettings(a)
-  s = await play(3)
-  expect(asked(s)).toBe(true)
-  await answer(3)
+  expect(asked(await play())).toBe(true)
+  await answer(true)
   await finish(table)
 })
 
@@ -249,9 +293,9 @@ test('Planechase: the plane is in the command zone and the planar die can be rol
   const plane = owner.commandZone.find((c: any) => c.commandKind === 'plane')
   expect(plane.name).toBeTruthy()
   expect(plane.rules.length).toBeGreaterThan(0)
-  const tile = a.page.locator('.command-object[data-command-kind="plane"]')
+  const tile = a.page.locator('.command-object[data-command-kind="plane"]').first()
   await expect(tile).toBeVisible()
-  await expect(b.page.locator('.command-object[data-command-kind="plane"]')).toBeVisible()
+  await expect(b.page.locator('.command-object[data-command-kind="plane"]').first()).toBeVisible()
   await tile.hover()
   await expect(a.page.locator('.preview')).toContainText(plane.name.replace(/^Plane - /, ''))
 

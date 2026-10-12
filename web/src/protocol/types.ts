@@ -201,6 +201,9 @@ export interface Choice {
   required: boolean
   keyChoice: boolean
   searchEnabled: boolean
+  /** an extra switch XMage offers with the choice, e.g. "remember this choice" */
+  specialEnabled?: boolean
+  specialText?: string
   items: { key: string; text: string }[]
 }
 

@@ -344,10 +344,22 @@ export const useStore = create<State>((set, get) => {
     dismissUserRequest: () => set({ userRequest: null }),
 
     saveSettings: async (settings) => {
+      const before = get().settings
       window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings))
       set({ settings })
       const applied = await connection.send<ServerSettings>('settings', { settings })
       set({ settings: applied })
+      // the mana switches of a running game are flipped by their own action, as in the Swing client
+      if (get().gameInfo) {
+        const switches: [keyof ServerSettings, string][] = [
+          ['manaPoolAutomatic', 'MANA_AUTO_PAYMENT'],
+          ['manaPoolAutomaticRestricted', 'MANA_AUTO_PAYMENT_RESTRICTED'],
+          ['useFirstManaAbility', 'USE_FIRST_MANA_ABILITY'],
+        ]
+        for (const [key, action] of switches) {
+          if (!before || before[key] !== applied[key]) get().action(`${action}_${applied[key] ? 'ON' : 'OFF'}`)
+        }
+      }
     },
 
     savePrefs: (change) => {

@@ -314,7 +314,8 @@ final class ViewMapper {
         o.addProperty("imageNumber", c.getImageNumber());
         o.addProperty("token", c.isToken());
         o.addProperty("faceDown", c.isFaceDown());
-        o.addProperty("typeLine", c.getTypeText());
+        // (XMage leaves a double space where a card has no supertype)
+        o.addProperty("typeLine", c.getTypeText() == null ? null : c.getTypeText().replaceAll("\\s+", " ").trim());
         o.add("types", enums(c.getCardTypes()));
         o.addProperty("manaCost", c.getManaCostStr());
         o.addProperty("manaValue", c.getManaValue());
