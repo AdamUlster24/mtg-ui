@@ -5,6 +5,7 @@ import {
   cheat,
   choose,
   clickCard,
+  clickVisible,
   finish,
   findPermanent,
   hasArt,
@@ -55,7 +56,7 @@ test('double-faced card transforms into a planeswalker: Jace, Vryn\'s Prodigy', 
   }
   s = await passUntil(table, a, 'the discard', (x) => x.prompt?.method === 'GAME_TARGET')
   const discard = s.game.hand[0]
-  await a.page.locator(`.hand .card[data-card-id="${discard.id}"]`).click()
+  await clickVisible(a, a.page.locator(`.hand .card[data-card-id="${discard.id}"]`))
 
   s = await passUntil(table, a, 'the transformed planeswalker', (x) => findPermanent(x, 'Jace, Telepath Unbound'))
   const jace = findPermanent(s, 'Jace, Telepath Unbound')

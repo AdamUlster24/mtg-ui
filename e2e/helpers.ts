@@ -218,16 +218,46 @@ export function card(seat: Seat, name: string, zone: Zone = 'any'): Locator {
   return seat.page.locator(`${ZONES[zone]} .card[data-name="${name}"]`).first()
 }
 
+/**
+ * Clicks an element the way a player does: on a spot of it that is actually showing.
+ * Cards overlap (a fanned hand, piled lands, attachments), so their centre is often covered.
+ */
+export async function clickVisible(seat: Seat, target: Locator) {
+  await target.waitFor({ state: 'visible' })
+  // a hand card under the pointer is raised over its neighbours: start from a neutral spot
+  await seat.page.mouse.move(4, 4)
+  const deadline = Date.now() + 10_000
+  for (;;) {
+    const point = await target.evaluate((el) => {
+      const r = el.getBoundingClientRect()
+      for (const fy of [0.5, 0.3, 0.7, 0.15, 0.85]) {
+        for (let x = r.left + 3; x < r.right - 2; x += 4) {
+          const y = r.top + r.height * fy
+          const hit = document.elementFromPoint(x, y)
+          if (hit && el.contains(hit)) return { x, y }
+        }
+      }
+      return null
+    })
+    if (point) {
+      await seat.page.mouse.click(point.x, point.y)
+      return
+    }
+    if (Date.now() > deadline) throw new Error(`${seat.name}: no visible spot to click on ${target}`)
+    await sleep(100)
+  }
+}
+
 /** Clicks a card and waits until the server reacted */
 export async function clickCard(seat: Seat, name: string, zone: Zone = 'any') {
   const before = await snap(seat)
-  await card(seat, name, zone).click()
+  await clickVisible(seat, card(seat, name, zone))
   return promptChanged(seat, before)
 }
 
 export async function clickId(seat: Seat, id: string) {
   const before = await snap(seat)
-  await seat.page.locator(`[data-oid="${id}"]`).first().click()
+  await clickVisible(seat, seat.page.locator(`[data-oid="${id}"]`).first())
   return promptChanged(seat, before)
 }
 
@@ -252,8 +282,9 @@ export function manaSources(s: Snap): any[] {
   const makes = (c: any, color: string) => c.rules.join(' ').includes(`{${color}}`)
   const sources = me(s).battlefield.filter((c: any) => c.playable && !c.tapped && c.types.includes('LAND'))
   // XMage lets you tap anything, so pick a land that makes a color the cost still needs;
-  // for a generic cost prefer the land that is piled last (the only fully visible one)
-  const score = (c: any) => (colors.some((color) => makes(c, color)) ? 2 : colors.length === 0 ? 1 : 0)
+  // generic costs are paid with the land type there is most of, to keep the other colors available
+  const copies = (c: any) => sources.filter((o: any) => o.name === c.name).length
+  const score = (c: any) => (colors.some((color) => makes(c, color)) ? 100 : 0) + copies(c)
   return sources
     .map((c: any, i: number) => ({ c, i }))
     .sort((x: any, y: any) => score(y.c) - score(x.c) || y.i - x.i)

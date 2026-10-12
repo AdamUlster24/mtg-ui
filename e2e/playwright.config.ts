@@ -14,6 +14,8 @@ export default defineConfig({
   use: {
     channel: process.env.E2E_BROWSER_CHANNEL ?? 'chrome',
     viewport: { width: 1600, height: 900 },
+    // a click that can't land should fail the test quickly instead of waiting for the test timeout
+    actionTimeout: 15_000,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
