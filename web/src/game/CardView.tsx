@@ -1,8 +1,9 @@
 import { motion } from 'motion/react'
-import { memo, useState } from 'react'
+import { memo, useLayoutEffect, useRef, useState } from 'react'
 import type { Card } from '../protocol/types'
 import { useStore } from '../store'
 import { useInteraction } from './interaction'
+import { animateEntrances, flyIn, wasVisible } from './motion'
 import { ManaCost, RichText, imageUrls } from './text'
 
 const FRAME: Record<string, string> = { W: 'white', U: 'blue', B: 'black', R: 'red', G: 'green' }
@@ -39,6 +40,7 @@ function TextFace({ card }: { card: Card }) {
 export function CardFace({ card }: { card: Card }) {
   const urls = imageUrls(card)
   const [failed, setFailed] = useState(0)
+  const [loaded, setLoaded] = useState(false)
   if (card.faceDown || (!card.name && !card.isAbility)) {
     return <div className="face card-back" />
   }
@@ -46,13 +48,15 @@ export function CardFace({ card }: { card: Card }) {
     return <TextFace card={card} />
   }
   return (
-    <div className="face">
+    <div className={`face ${loaded ? 'art-loaded' : 'art-loading'}`}>
+      {/* readable right away; the art fades in over it once it has arrived */}
+      {!loaded && <TextFace card={card} />}
       <img
         key={urls[failed]}
         src={urls[failed]}
         alt={card.name}
         draggable={false}
-        loading="lazy"
+        onLoad={() => setLoaded(true)}
         onError={() => setFailed((n) => n + 1)}
       />
       {card.isAbility && (
@@ -76,9 +80,19 @@ interface Props {
   onClick?: () => void
   attacking?: boolean
   blocking?: boolean
+  /** where the card flies in from when it was not on the table before (CSS selector); default: pops in */
+  enterFrom?: string | null
 }
 
-export const CardView = memo(function CardView({ card, shared = true, className = '', onClick, attacking, blocking }: Props) {
+export const CardView = memo(function CardView({ card, shared = true, className = '', onClick, attacking, blocking, enterFrom }: Props) {
+  const body = useRef<HTMLDivElement>(null)
+  // cards that were visible a moment ago are moved by their layout id; new ones fly in from their origin
+  useLayoutEffect(() => {
+    if (shared && body.current && animateEntrances() && !wasVisible(card.id)) {
+      flyIn(body.current, enterFrom ? document.querySelector(enterFrom) : null)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const setPreview = useStore((s) => s.setPreview)
   const { mark, click, active } = useInteraction()
   const state = mark(card.id, card)
@@ -93,6 +107,7 @@ export const CardView = memo(function CardView({ card, shared = true, className 
     blocking ? 'blocking' : '',
     card.summoningSick && card.types.includes('CREATURE') ? 'sick' : '',
     card.phasedIn === false ? 'phased-out' : '',
+    card.damage ? 'damaged' : '',
     active && state ? 'clickable' : '',
   ]
   return (
@@ -113,20 +128,32 @@ export const CardView = memo(function CardView({ card, shared = true, className 
         else click(card.id)
       }}
     >
-      <div className="card-body">
+      <div className="card-body" ref={body}>
         <CardFace card={card} />
-        {card.damage ? <div className="badge damage">{card.damage}</div> : null}
+        {card.damage ? (
+          <div key={card.damage} className="badge damage">
+            {card.damage}
+          </div>
+        ) : null}
         {card.counters.length > 0 && (
           <div className="counters">
             {card.counters.map((c) => (
-              <span key={c.name} title={c.name}>
+              <span key={c.name + c.count} title={c.name}>
                 {c.count} {c.name.length > 5 ? c.name.slice(0, 4) + '…' : c.name}
               </span>
             ))}
           </div>
         )}
-        {pt && <div className={`badge pt ${card.damage ? 'hurt' : ''}`}>{pt}</div>}
-        {!pt && loyalty && <div className="badge loyalty">{loyalty}</div>}
+        {pt && (
+          <div key={pt} className={`badge pt ${card.damage ? 'hurt' : ''}`}>
+            {pt}
+          </div>
+        )}
+        {!pt && loyalty && (
+          <div key={loyalty} className="badge loyalty">
+            {loyalty}
+          </div>
+        )}
         {card.copy && <div className="badge copy">copy</div>}
       </div>
     </motion.div>

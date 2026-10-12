@@ -1,11 +1,12 @@
 import { LayoutGroup } from 'motion/react'
-import { useMemo, useState } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Arrows } from '../game/Arrows'
-import { Battlefield } from '../game/Battlefield'
+import { Battlefield, battlefieldUnits } from '../game/Battlefield'
 import { CardFace, CardView } from '../game/CardView'
 import { CardGrid, Modal, PromptDialog } from '../game/Dialogs'
 import { InteractionContext, buildInteraction } from '../game/interaction'
 import { LogPanel } from '../game/LogPanel'
+import { animateEntrances, flyIn, playedFromHand, wasVisible } from '../game/motion'
 import { PhaseTrack } from '../game/PhaseTrack'
 import { PlayerPanel } from '../game/PlayerPanel'
 import { PromptBar } from '../game/PromptBar'
@@ -25,40 +26,60 @@ function zoneCards(game: GameView, zone: Zone): Card[] {
   return []
 }
 
-function Hand({ cards }: { cards: Card[] }) {
+function Hand({ cards, playerId }: { cards: Card[]; playerId: string }) {
   const mid = (cards.length - 1) / 2
   return (
     <div className="hand" style={{ ['--n' as string]: cards.length }}>
       {cards.map((card, i) => (
         <div key={card.id} className="hand-slot" style={{ ['--o' as string]: i - mid }}>
-          <CardView card={card} className="in-hand" />
+          <CardView card={card} className="in-hand" enterFrom={`[data-pile="library-${playerId}"]`} />
         </div>
       ))}
     </div>
   )
 }
 
-function OpponentHand({ count }: { count: number }) {
+function OpponentHand({ count, playerId }: { count: number; playerId: string }) {
   const shown = Math.min(count, 12)
   const mid = (shown - 1) / 2
+  const root = useRef<HTMLDivElement>(null)
+  const before = useRef(shown)
+  // cards the opponent draws come from their library
+  useLayoutEffect(() => {
+    const backs = Array.from(root.current?.children ?? []) as HTMLElement[]
+    if (animateEntrances()) {
+      const library = document.querySelector(`[data-pile="library-${playerId}"]`)
+      backs.slice(before.current).forEach((el, i) => flyIn(el, library, i * 60))
+    }
+    before.current = shown
+  }, [shown, playerId])
   return (
-    <div className="opp-hand" title={`${count} cards in hand`}>
+    <div className="opp-hand" title={`${count} cards in hand`} ref={root}>
       {Array.from({ length: shown }, (_, i) => (
-        <div key={i} className="card-back mini" style={{ ['--o' as string]: i - mid }} />
+        <div key={i} className="opp-card" style={{ ['--o' as string]: i - mid }}>
+          <div className="card-back mini" />
+        </div>
       ))}
     </div>
   )
 }
 
-function Stack({ cards }: { cards: Card[] }) {
+function Stack({ cards, opponentId }: { cards: Card[]; opponentId: string }) {
   if (cards.length === 0) return null
+  // abilities come out of their source; spells that were not in my hand come from the opponent's
+  const origin = (card: Card) =>
+    card.isAbility && card.sourceCard && wasVisible(card.sourceCard.id)
+      ? `[data-oid="${card.sourceCard.id}"]`
+      : playedFromHand(opponentId)
+        ? '.opp-hand'
+        : null
   return (
     <div className="stack-zone">
       <div className="zone-title">Stack · {cards.length}</div>
       <div className="stack-cards">
         {cards.map((card, i) => (
           <div key={card.id} className="stack-slot" style={{ ['--i' as string]: i, zIndex: cards.length - i }}>
-            <CardView card={card} className="in-stack" />
+            <CardView card={card} className="in-stack" enterFrom={origin(card)} />
           </div>
         ))}
       </div>
@@ -109,6 +130,26 @@ export function GameScreen() {
   const leaveGame = useStore((s) => s.leaveGame)
   const [zone, setZone] = useState<Zone | null>(null)
   const [showLog, setShowLog] = useState(true)
+  const table = useRef<HTMLDivElement>(null)
+  const [size, setSize] = useState({ width: window.innerWidth, height: window.innerHeight, tableWidth: window.innerWidth * 0.7 })
+  const hasGame = !!game
+  useLayoutEffect(() => {
+    const measure = () => {
+      const el = table.current
+      if (!el) return
+      // the stack floats over the right edge of the table, rows must stay clear of it
+      const reserved = Math.min(window.innerHeight * 0.15, window.innerWidth * 0.104) * 1.25
+      setSize({ width: window.innerWidth, height: window.innerHeight, tableWidth: el.clientWidth - reserved })
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    if (table.current) observer.observe(table.current)
+    window.addEventListener('resize', measure)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', measure)
+    }
+  }, [hasGame, showLog])
 
   const interaction = useMemo(() => buildInteraction(prompt, answering, respond), [prompt, answering, respond])
 
@@ -119,14 +160,9 @@ export function GameScreen() {
   const me = game.players.find((p) => p.id === game.myPlayerId) ?? game.players[0]
   const opponent = game.players.find((p) => p.id !== me.id) ?? me
 
-  // few permanents: bigger cards; crowded board: smaller ones
-  const widest = Math.max(
-    ...game.players.flatMap((p) => {
-      const creatures = p.battlefield.filter((c) => c.types.includes('CREATURE')).length
-      return [creatures, new Set(p.battlefield.filter((c) => !c.types.includes('CREATURE')).map((c) => c.name + c.tapped)).size]
-    }),
-  )
-  const density = widest <= 7 ? 'roomy' : widest >= 13 ? 'dense' : ''
+  // battlefield cards are as big as the height allows, and shrink when a row would not fit the width
+  const units = Math.max(1, ...game.players.map((p) => battlefieldUnits(p, game)))
+  const cardHeight = Math.min(size.height * 0.14, size.width * 0.104, ((size.tableWidth - 32) / units) * 1.4)
 
   const lists: [NonNullable<Zone['kind']>, NamedCards][] = [
     ...game.revealed.map((l) => ['revealed', l] as [NonNullable<Zone['kind']>, NamedCards]),
@@ -139,10 +175,10 @@ export function GameScreen() {
     <InteractionContext.Provider value={interaction}>
       <LayoutGroup>
         <div className={`game ${showLog ? '' : 'log-hidden'}`}>
-          <div className={`table ${density}`}>
+          <div className="table" ref={table} style={{ ['--bf-ch' as string]: `${Math.max(40, cardHeight)}px` }}>
             <div className="strip top">
               <PlayerPanel player={opponent} mine={false} onShowZone={(title, z) => setZone({ title, playerId: opponent.id, zone: z })} />
-              <OpponentHand count={opponent.handCount} />
+              <OpponentHand count={opponent.handCount} playerId={opponent.id} />
             </div>
 
             <Battlefield player={opponent} game={game} mine={false} />
@@ -151,11 +187,11 @@ export function GameScreen() {
 
             <div className="strip bottom">
               <PlayerPanel player={me} mine onShowZone={(title, z) => setZone({ title, playerId: me.id, zone: z })} />
-              <Hand cards={game.hand} />
+              <Hand cards={game.hand} playerId={me.id} />
               <PromptBar prompt={prompt} game={game} />
             </div>
 
-            <Stack cards={game.stack} />
+            <Stack cards={game.stack} opponentId={opponent.id} />
 
             {lists.length > 0 && (
               <div className="zone-chips">

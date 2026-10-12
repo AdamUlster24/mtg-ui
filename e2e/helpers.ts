@@ -406,6 +406,7 @@ export async function hasArt(seat: Seat, locator: Locator, timeout = 20_000): Pr
     const state = await locator.evaluate((el) => {
       const img = el.querySelector('.face img') as HTMLImageElement | null
       if (!img) return el.querySelector('.text-face') ? 'text' : 'none'
+      if (el.querySelector('.face.art-loading')) return 'loading'
       return img.complete && img.naturalWidth > 0 ? 'art' : 'loading'
     })
     if (state === 'art') return true

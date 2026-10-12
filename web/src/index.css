@@ -383,10 +383,22 @@ select:focus {
 }
 
 .face img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
+  transition: opacity 0.25s;
+}
+
+.face.art-loading img {
+  opacity: 0;
+}
+
+.face > .text-face {
+  position: absolute;
+  inset: 0;
 }
 
 .card-back {
@@ -657,13 +669,13 @@ select:focus {
 
 /* ---------------------------------------------------------------- battlefield */
 
-.table.roomy .battlefield,
-.table.roomy .stack-zone {
-  --ch: min(15vh, 10.4vw);
+.battlefield {
+  /* set by GameScreen so that the widest row fits */
+  --ch: var(--bf-ch, min(13.4vh, 9.4vw));
   --cw: calc(var(--ch) / 1.4);
 }
 
-.table.dense .battlefield {
+.battlefield {
   --ch: min(11.6vh, 7vw);
   --cw: calc(var(--ch) / 1.4);
 }
@@ -675,7 +687,7 @@ select:focus {
   gap: calc(var(--ch) * 0.07);
   padding: 0.2rem 1rem;
   /* room for the stack on the right */
-  padding-right: calc(var(--cw) * 1.7);
+  padding-right: calc(min(15vh, 10.4vw) * 1.25);
   min-height: 0;
 }
 
@@ -973,14 +985,22 @@ select:focus {
   align-items: flex-end;
   height: 100%;
   min-width: 0;
-  padding-left: calc(var(--hw) * 0.4);
+  padding: 0 0.4rem;
 }
 
 .hand-slot {
-  margin-left: calc(var(--hw) * -1 * min(0.72, max(0.14, (var(--n) - 5) * 0.075 + 0.14)));
+  /* slots give up width when the hand is crowded, the cards keep theirs and overlap */
+  flex: 0 1 calc(var(--hw) * 0.8);
+  width: calc(var(--hw) * 0.8);
+  min-width: 0.9rem;
   transform: translateY(calc(var(--o) * var(--o) * 1.6px + 8%)) rotate(calc(var(--o) * 2.6deg));
   transform-origin: 50% 120%;
   transition: transform 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+}
+
+.hand-slot:last-child {
+  flex: 0 0 var(--hw);
+  width: var(--hw);
 }
 
 .hand-slot:hover {
@@ -1002,11 +1022,14 @@ select:focus {
   margin-top: calc(var(--ch) * -0.32);
 }
 
+.opp-card {
+  margin-left: calc(var(--cw) * -0.28);
+  transform: rotate(calc(var(--o) * -2.4deg)) translateY(calc(var(--o) * var(--o) * -1px));
+}
+
 .card-back.mini {
   width: calc(var(--cw) * 0.62);
   height: calc(var(--ch) * 0.62);
-  margin-left: calc(var(--cw) * -0.28);
-  transform: rotate(calc(var(--o) * -2.4deg)) translateY(calc(var(--o) * var(--o) * -1px));
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5);
 }
 
@@ -1498,4 +1521,228 @@ kbd {
 
 .prompt-message .mana:last-of-type {
   margin-right: 0.35em;
+}
+
+/* ---------------------------------------------------------------- zone piles */
+
+.zone-piles {
+  display: flex;
+  gap: 6px;
+  margin-left: 0.2rem;
+}
+
+.pile {
+  --cw: calc(var(--ch) * 0.4);
+  position: relative;
+  width: var(--cw);
+  height: calc(var(--cw) * 1.4);
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  flex: none;
+}
+
+button.pile {
+  cursor: pointer;
+}
+
+.pile .card-back,
+.pile .pile-empty,
+.pile .card {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: calc(var(--cw) * 0.06);
+}
+
+.pile .card-back {
+  box-shadow:
+    2px 2px 0 #0d1320,
+    4px 4px 0 #090d16,
+    0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+.pile-empty {
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.pile-size {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  min-width: 1.5em;
+  padding: 0.05em 0.35em;
+  border-radius: 999px;
+  font: 700 0.72rem Inter, sans-serif;
+  text-align: center;
+  background: rgba(10, 12, 18, 0.95);
+  border: 1px solid var(--line);
+  z-index: 3;
+  pointer-events: none;
+}
+
+.pile-label {
+  position: absolute;
+  left: 50%;
+  top: -1.25em;
+  transform: translateX(-50%);
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  opacity: 0;
+  transition: opacity 0.15s;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.pile:hover .pile-label {
+  opacity: 1;
+}
+
+.hand-count {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+/* ---------------------------------------------------------------- change feedback */
+
+#ghost-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 55;
+}
+
+.fly-ghost {
+  pointer-events: none;
+}
+
+.life-orb {
+  position: relative;
+}
+
+.life {
+  display: inline-block;
+}
+
+.life.lost {
+  animation: life-lost 0.7s ease-out;
+}
+
+.life.gained {
+  animation: life-gained 0.7s ease-out;
+}
+
+@keyframes life-lost {
+  0% {
+    transform: scale(1.7);
+    color: #ff6b6b;
+  }
+  40% {
+    transform: scale(0.92);
+  }
+}
+
+@keyframes life-gained {
+  0% {
+    transform: scale(1.7);
+    color: #8dffb5;
+  }
+  40% {
+    transform: scale(0.92);
+  }
+}
+
+.life-change {
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  margin-left: 6px;
+  font: 800 1.5rem Inter, sans-serif;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 40;
+  animation: float-away 1.6s ease-out forwards;
+}
+
+.life-change.lost {
+  color: #ff6b6b;
+}
+
+.life-change.gained {
+  color: #8dffb5;
+}
+
+@keyframes float-away {
+  0% {
+    transform: translateY(-20%) scale(0.6);
+    opacity: 0;
+  }
+  15% {
+    transform: translateY(-50%) scale(1.25);
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-190%) scale(1);
+    opacity: 0;
+  }
+}
+
+/* numbers on a card pop when they change (the element is re-created per value) */
+.badge.pt,
+.badge.loyalty,
+.counters span {
+  animation: badge-pop 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.4);
+}
+
+.badge.damage {
+  animation: damage-pop 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.4);
+}
+
+@keyframes badge-pop {
+  0% {
+    transform: scale(1.9);
+    filter: brightness(1.8);
+  }
+}
+
+@keyframes damage-pop {
+  0% {
+    transform: translate(-50%, -50%) scale(2.6);
+    opacity: 0;
+  }
+  35% {
+    opacity: 1;
+  }
+}
+
+.card.damaged .face {
+  animation: hit 0.45s ease-out;
+}
+
+@keyframes hit {
+  0%,
+  100% {
+    transform: none;
+    filter: none;
+  }
+  20% {
+    transform: translateX(-5%) rotate(-2deg);
+    filter: brightness(1.6) sepia(1) hue-rotate(-40deg) saturate(4);
+  }
+  50% {
+    transform: translateX(4%) rotate(1.5deg);
+  }
+  75% {
+    transform: translateX(-2%);
+  }
 }

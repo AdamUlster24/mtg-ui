@@ -171,7 +171,7 @@ test('targeting a card in the graveyard: Raise Dead', async ({ browser }) => {
   expect(me(s).graveyard.map((c: any) => c.name).sort()).toEqual(['Craw Wurm', 'Mountain', 'Raise Dead'])
 
   // the graveyard can be browsed from the player panel
-  await a.page.locator('.player-panel.mine .piles button[title="Graveyard"]').click()
+  await a.page.locator('.player-panel.mine .zone-piles [title="Graveyard"]').click()
   await expect(a.page.locator('.modal .card-grid .card')).toHaveCount(3)
   await a.page.locator('.modal header button').click()
   await finish(table)
