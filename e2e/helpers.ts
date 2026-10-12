@@ -603,3 +603,56 @@ export async function setSetting(seat: Seat, name: string, value: boolean, tab: 
   }
   await closeSettings(seat)
 }
+
+/** Sets several stop-step boxes in one visit to the settings ("yourTurn.upkeep" -> true ...) */
+export async function setStops(seat: Seat, values: Record<string, boolean>) {
+  await openSettings(seat, 'Stops')
+  for (const [name, value] of Object.entries(values)) {
+    await seat.page.locator(`[data-setting="${name}"]`).setChecked(value)
+  }
+  // the last change has reached the server when its answer is in the store
+  await seat.page.waitForFunction((wanted) => {
+    const settings = (window as any).mtgui.store.getState().settings
+    return Object.entries(wanted).every(([key, value]) => key.split('.').reduce((o: any, k: string) => o?.[k], settings) === value)
+  }, values)
+  await seat.page.waitForTimeout(300)
+  await closeSettings(seat)
+}
+
+/**
+ * Both players pass until `untilTurn` begins. Returns the steps of each turn in which `who` was
+ * asked to act with an empty stack, e.g. { 2: ['UPKEEP', 'DRAW'], 3: [...] }.
+ */
+export async function stopsSeen(table: Table, who: Seat, untilTurn: number, timeout = 90_000, attacker?: Seat): Promise<Record<number, string[]>> {
+  const seen: Record<number, string[]> = {}
+  const deadline = Date.now() + timeout
+  for (;;) {
+    for (const seat of table.seats) {
+      const s = await snap(seat)
+      if (s.game.turn >= untilTurn) return seen
+      if (!s.prompt || s.answering) continue
+      const method = s.prompt.method
+      if (method === 'GAME_SELECT') {
+        const message = String(s.prompt.data.message)
+        if (seat === who && s.game.stack.length === 0) {
+          const step = /attackers/i.test(message) ? 'DECLARE_ATTACKERS' : /blockers/i.test(message) ? 'DECLARE_BLOCKERS' : s.game.step
+          const list = (seen[s.game.turn] ??= [])
+          if (!list.includes(step)) list.push(step)
+        }
+        // `attacker` sends everything into combat when asked, everybody else just passes
+        const all = seat.page.locator('.prompt-buttons button', { hasText: 'All attack' })
+        const button = seat === attacker && /attackers/i.test(message) && s.game.combat.length === 0 && (await all.count()) > 0 ? all : seat.page.locator('.prompt-buttons .primary')
+        const clicked = await button.first().click({ timeout: 2000 }).then(() => true, () => false)
+        if (clicked) await until(seat, 'the pass to register', (x) => x.prompt?.messageId !== s.prompt!.messageId, 5000).catch(() => {})
+      } else if (method === 'GAME_TARGET' && /discard/i.test(String(s.prompt.data.message))) {
+        await clickVisible(seat, seat.page.locator('.hand .card.mark-target').first())
+        await until(seat, 'the discard to register', (x) => x.prompt?.messageId !== s.prompt!.messageId).catch(() => {})
+      } else if (method === 'GAME_ASK') {
+        await seat.page.locator('.prompt-buttons .primary').click({ timeout: 2000 }).catch(() => {})
+        await until(seat, 'the answer to register', (x) => x.prompt?.messageId !== s.prompt!.messageId, 5000).catch(() => {})
+      }
+    }
+    if (Date.now() > deadline) throw new Error(`turn ${untilTurn} did not come`)
+    await sleep(50)
+  }
+}

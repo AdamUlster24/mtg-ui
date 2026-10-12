@@ -5,7 +5,7 @@ import { Battlefield, battlefieldUnits } from '../game/Battlefield'
 import { CardFace, CardView, faceDownKind, iconName } from '../game/CardView'
 import { CardGrid, Modal, PromptDialog } from '../game/Dialogs'
 import { Effects } from '../game/Effects'
-import { InteractionContext, buildInteraction } from '../game/interaction'
+import { InteractionContext, buildInteraction, useInteraction } from '../game/interaction'
 import { LogPanel } from '../game/LogPanel'
 import { animateEntrances, flyIn, playedFromHand, wasVisible } from '../game/motion'
 import { PhaseTrack } from '../game/PhaseTrack'
@@ -21,10 +21,21 @@ type Zone = { title: string; playerId: string; zone: 'graveyard' | 'exile' | 'si
 
 function Hand({ cards, playerId }: { cards: Card[]; playerId: string }) {
   const mid = (cards.length - 1) / 2
+  const { click } = useInteraction()
+  const setPreview = useStore((s) => s.setPreview)
   return (
     <div className="hand" style={{ ['--n' as string]: cards.length }}>
       {cards.map((card, i) => (
-        <div key={card.id} className="hand-slot" style={{ ['--o' as string]: i - mid }}>
+        // the slot keeps its place while the card under the pointer rises out of it, so the pointer
+        // never "falls off" the card; a click anywhere in the slot plays the card
+        <div
+          key={card.id}
+          className="hand-slot"
+          style={{ ['--o' as string]: i - mid }}
+          onClick={() => click(card.id)}
+          onMouseEnter={() => setPreview(card)}
+          onMouseLeave={() => setPreview(null)}
+        >
           <CardView card={card} className="in-hand" enterFrom={`[data-pile="library-${playerId}"]`} />
         </div>
       ))}

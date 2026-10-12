@@ -24,6 +24,7 @@ if [ ! -f "$RUN_DIR/config/config.xml" ]; then
     sed -e 's/serverAddress="0.0.0.0"/serverAddress="127.0.0.1"/' \
         -e "s/ port=\"17171\"/ port=\"$XMAGE_PORT\"/" \
         -e "s/secondaryBindPort=\"17179\"/secondaryBindPort=\"$((XMAGE_PORT + 8))\"/" \
+        -e "s/maxGameThreads=\"10\"/maxGameThreads=\"${XMAGE_MAX_GAMES:-10}\"/" \
         "$MAGE_DIR/Mage.Server/config/config.xml" > "$RUN_DIR/config/config.xml"
 fi
 export WEB_DIST="${WEB_DIST:-$ROOT/web/dist}"

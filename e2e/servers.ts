@@ -67,6 +67,8 @@ export async function startServer(spec: ServerSpec): Promise<void> {
       GATEWAY_HEAP: '2g',
       // a failed test leaves its game behind; free XMage's game threads quickly
       SESSION_TIMEOUT_MINUTES: '1',
+      // (only read when the run directory is created)
+      XMAGE_MAX_GAMES: '60',
     },
   })
   child.unref()
