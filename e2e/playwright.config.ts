@@ -23,7 +23,6 @@ export default defineConfig({
     { name: 'scenarios', testMatch: /scenarios\/.*\.spec\.ts/ },
     { name: 'games', testMatch: /games\/.*\.spec\.ts/, timeout: 30 * 60_000 },
     { name: 'online', testMatch: /online\/.*\.spec\.ts/, timeout: 5 * 60_000 },
-    { name: 'debug', testMatch: /debug\/.*\.spec\.ts/ },
     { name: 'captures', testMatch: /captures\/.*\.spec\.ts/, timeout: 10 * 60_000 },
   ],
 })

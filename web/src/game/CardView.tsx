@@ -98,6 +98,8 @@ export const CardView = memo(function CardView({ card, shared = true, className 
   const state = mark(card.id, card)
   const pt = card.permanent && card.types.includes('CREATURE') ? `${card.power}/${card.toughness}` : null
   const loyalty = card.permanent ? card.loyalty || card.defense : null
+  // loyalty and defense already have their own badge
+  const counters = card.counters.filter((c) => !(loyalty && /^(loyalty|defense)$/i.test(c.name)))
   const classes = [
     'card',
     className,
@@ -135,9 +137,9 @@ export const CardView = memo(function CardView({ card, shared = true, className 
             {card.damage}
           </div>
         ) : null}
-        {card.counters.length > 0 && (
+        {counters.length > 0 && (
           <div className="counters">
-            {card.counters.map((c) => (
+            {counters.map((c) => (
               <span key={c.name + c.count} title={c.name}>
                 {c.count} {c.name.length > 5 ? c.name.slice(0, 4) + '…' : c.name}
               </span>
