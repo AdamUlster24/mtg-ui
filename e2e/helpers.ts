@@ -165,8 +165,8 @@ export async function preGame(table: Table) {
 
 // ---------------------------------------------------------------- state
 
-export function snap(seat: Seat): Promise<Snap> {
-  return seat.page.evaluate(() => {
+export async function snap(seat: Seat): Promise<Snap> {
+  const read = seat.page.evaluate(() => {
     const s = (window as any).mtgui.store.getState()
     return {
       screen: s.screen,
@@ -179,6 +179,16 @@ export function snap(seat: Seat): Promise<Snap> {
       log: s.log,
     }
   })
+  // a frozen or crashed page must fail the test, not hang it
+  let timer: NodeJS.Timeout | undefined
+  const late = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${seat.name}: the page did not answer within 20s`)), 20_000)
+  })
+  try {
+    return await Promise.race([read, late])
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 /** Polls the client state until `test` returns something truthy, and returns that */

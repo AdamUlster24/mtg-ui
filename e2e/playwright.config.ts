@@ -21,8 +21,9 @@ export default defineConfig({
   },
   projects: [
     { name: 'scenarios', testMatch: /scenarios\/.*\.spec\.ts/ },
-    { name: 'games', testMatch: /games\/.*\.spec\.ts/, timeout: 30 * 60_000 },
-    { name: 'online', testMatch: /online\/.*\.spec\.ts/, timeout: 5 * 60_000 },
+    // whole games poll the client state thousands of times; a trace of that grows into gigabytes
+    { name: 'games', testMatch: /games\/.*\.spec\.ts/, timeout: 30 * 60_000, use: { trace: 'off' } },
+    { name: 'online', testMatch: /online\/.*\.spec\.ts/, timeout: 5 * 60_000, use: { trace: 'off' } },
     { name: 'captures', testMatch: /captures\/.*\.spec\.ts/, timeout: 10 * 60_000 },
   ],
 })

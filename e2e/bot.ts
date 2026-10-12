@@ -183,7 +183,7 @@ async function act(seat: Seat, s: Snap, mem: Memory): Promise<void> {
  * Plays the game on the table to its end. Throws when nothing moves for a minute
  * (a prompt the UI can't answer) or when the game drags on past `maxTurns`.
  */
-export async function playToTheEnd(table: Table, options: { maxTurns?: number; log?: (line: string) => void } = {}): Promise<GameReport> {
+export async function playToTheEnd(table: Table, options: { maxTurns?: number; maxMinutes?: number; log?: (line: string) => void } = {}): Promise<GameReport> {
   const maxTurns = options.maxTurns ?? 80
   const prompts: Record<string, number> = {}
   const memory = new Map<Seat, Memory>()
@@ -192,6 +192,8 @@ export async function playToTheEnd(table: Table, options: { maxTurns?: number; l
   }
   let progress = Date.now()
   let lastTurn = 0
+  const started = Date.now()
+  const maxMinutes = options.maxMinutes ?? 20
 
   for (;;) {
     for (const seat of table.seats) {
@@ -255,6 +257,7 @@ export async function playToTheEnd(table: Table, options: { maxTurns?: number; l
         mem.repeats += 1
       }
     }
+    if (Date.now() - started > maxMinutes * 60_000) throw new Error(`game still running after ${maxMinutes} minutes (turn ${lastTurn})`)
     if (Date.now() - progress > 60_000) {
       const states = await Promise.all(table.seats.map(async (seat) => `${seat.name}: ${JSON.stringify((await snap(seat)).prompt?.method)} "${text(await snap(seat))}"`))
       throw new Error(`no prompt was answered for a minute\n${states.join('\n')}`)
