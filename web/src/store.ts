@@ -10,15 +10,39 @@ import type {
   PromptMethod,
   ResponseKind,
   Resume,
+  ServerSettings,
+  Sideboarding,
+  TableOptions,
   ServerEvent,
   TableInfo,
 } from './protocol/types'
 
 const TOKEN_KEY = 'mtgui.token'
 const PASSWORD_KEY = 'mtgui.password'
+const SETTINGS_KEY = 'mtgui.settings'
+const PREFS_KEY = 'mtgui.prefs'
 const MAX_LOG = 500
 
-export type Screen = 'connecting' | 'password' | 'login' | 'lobby' | 'game'
+export type Screen = 'connecting' | 'password' | 'login' | 'lobby' | 'game' | 'sideboard'
+
+/** Preferences that only concern this browser */
+export interface ClientPrefs {
+  /** battlefield card size, 1 = as large as fits */
+  cardScale: number
+  animations: 'normal' | 'fast' | 'off'
+  showLog: boolean
+}
+
+const DEFAULT_PREFS: ClientPrefs = { cardScale: 1, animations: 'normal', showLog: true }
+
+function stored<T>(key: string): T | null {
+  try {
+    const raw = window.localStorage.getItem(key)
+    return raw ? (JSON.parse(raw) as T) : null
+  } catch {
+    return null
+  }
+}
 
 export interface Notice {
   key: number
@@ -53,6 +77,16 @@ interface State {
   gameEnd: GameEnd | null
   gameOverMessage: string | null
   userRequest: UserRequest | null
+  /** XMage preferences of this player (stop steps, auto-payment, ...) and their defaults */
+  settings: ServerSettings | null
+  defaultSettings: ServerSettings | null
+  tableOptions: TableOptions | null
+  prefs: ClientPrefs
+  sideboarding: Sideboarding | null
+  /** the server asked to show a zone (e.g. "view sideboard") */
+  showSideboardOf: string | null
+  /** cast the next spell without passing priority afterwards (Ctrl in the Swing client) */
+  holdPriority: boolean
   preview: Card | null
   passwordError: string | null
 
@@ -68,6 +102,10 @@ interface State {
   notify: (title: string, message: string) => void
   dismissNotice: (key: number) => void
   dismissUserRequest: () => void
+  saveSettings: (settings: ServerSettings) => Promise<void>
+  savePrefs: (prefs: Partial<ClientPrefs>) => void
+  setHoldPriority: (hold: boolean) => void
+  clearShowSideboard: () => void
 }
 
 const connection = new Connection()
@@ -86,12 +124,16 @@ export const useStore = create<State>((set, get) => {
     set((s) => ({
       userName: resume.userName ?? null,
       testMode: !!resume.testMode,
+      settings: resume.settings ?? s.settings,
+      defaultSettings: resume.defaultSettings ?? s.defaultSettings,
+      tableOptions: resume.tableOptions ?? s.tableOptions,
       gameTypes: resume.gameTypes ?? [],
       deckTypes: resume.deckTypes ?? [],
       table: resume.table ?? null,
       gameInfo: resume.game ?? null,
       // the gateway replays the game log and the latest game state right after this
       log: resume.game ? [] : s.log,
+      // a pending sideboarding request is replayed by the gateway and switches the screen itself
       screen: resume.game ? 'game' : 'lobby',
     }))
   }
@@ -128,8 +170,17 @@ export const useStore = create<State>((set, get) => {
   const onEvent = (event: ServerEvent) => {
     const { data } = event
     switch (event.method) {
+      case 'SIDEBOARD':
+      case 'CONSTRUCT':
+        set({ sideboarding: { tableId: data.tableId, time: data.time, deck: data.deck }, screen: 'sideboard', gameEnd: null })
+        break
+      case 'VIEW_SIDEBOARD':
+        set({ showSideboardOf: data.playerId })
+        break
       case 'START_GAME':
         set({
+          sideboarding: null,
+          holdPriority: false,
           gameInfo: data,
           game: null,
           prompt: null,
@@ -218,6 +269,13 @@ export const useStore = create<State>((set, get) => {
     gameEnd: null,
     gameOverMessage: null,
     userRequest: null,
+    settings: stored<ServerSettings>(SETTINGS_KEY),
+    defaultSettings: null,
+    tableOptions: null,
+    prefs: { ...DEFAULT_PREFS, ...(stored<Partial<ClientPrefs>>(PREFS_KEY) ?? {}) },
+    sideboarding: null,
+    showSideboardOf: null,
+    holdPriority: false,
     preview: null,
     passwordError: null,
 
@@ -227,7 +285,8 @@ export const useStore = create<State>((set, get) => {
     },
 
     login: async (username) => {
-      applyResume(await connection.send<Resume>('login', { username }))
+      // the preferences saved in this browser go along, XMage applies them from the first turn
+      applyResume(await connection.send<Resume>('login', { username, settings: stored<ServerSettings>(SETTINGS_KEY) }))
     },
 
     request: (cmd, args) => connection.send(cmd, args),
@@ -282,6 +341,27 @@ export const useStore = create<State>((set, get) => {
     dismissNotice: (key) => set((s) => ({ notices: s.notices.filter((n) => n.key !== key) })),
 
     dismissUserRequest: () => set({ userRequest: null }),
+
+    saveSettings: async (settings) => {
+      window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings))
+      set({ settings })
+      const applied = await connection.send<ServerSettings>('settings', { settings })
+      set({ settings: applied })
+    },
+
+    savePrefs: (change) => {
+      const prefs = { ...get().prefs, ...change }
+      window.localStorage.setItem(PREFS_KEY, JSON.stringify(prefs))
+      set({ prefs })
+    },
+
+    setHoldPriority: (hold) => {
+      if (get().holdPriority === hold) return
+      set({ holdPriority: hold })
+      get().action(hold ? 'HOLD_PRIORITY' : 'UNHOLD_PRIORITY')
+    },
+
+    clearShowSideboard: () => set({ showSideboardOf: null }),
   }
 })
 

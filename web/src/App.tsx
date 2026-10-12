@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { GameScreen } from './screens/GameScreen'
 import { Lobby } from './screens/Lobby'
+import { Sideboard } from './screens/Sideboard'
 import { useStore } from './store'
 
 function Gate() {
@@ -100,6 +101,7 @@ export default function App() {
       {(screen === 'login' || screen === 'password') && <Gate />}
       {screen === 'lobby' && <Lobby />}
       {screen === 'game' && <GameScreen />}
+      {screen === 'sideboard' && <Sideboard />}
       {!online && screen !== 'connecting' && <div className="offline">Reconnecting…</div>}
       <Notices />
     </>

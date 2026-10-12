@@ -225,6 +225,18 @@ final class ClientSession implements MageClient {
                     throw new GatewayException("Can't start the match" + lastError());
                 }
                 return null;
+            case "quitMatch": {
+                // gives up the whole match, not just the current game
+                JsonObject game;
+                synchronized (this) {
+                    game = currentGame;
+                }
+                if (game == null) {
+                    throw new GatewayException("Not in a game");
+                }
+                session.quitMatch(uuid(game, "gameId"));
+                return null;
+            }
             case "submitDeck":
                 return submitDeck(msg);
             case "respond":

@@ -27,6 +27,8 @@ import java.util.UUID;
  */
 final class ViewMapper {
 
+    private static final String HINT_START = mage.abilities.hint.HintUtils.HINT_START_MARK;
+
     private ViewMapper() {
     }
 
@@ -228,7 +230,10 @@ final class ViewMapper {
         o.add("types", new JsonArray());
         o.add("counters", new JsonArray());
         o.add("targets", new JsonArray());
-        o.add("rules", strings(c.getRules()));
+        List<String> all = c.getRules() == null ? java.util.Collections.emptyList() : c.getRules();
+        int hintStart = all.indexOf(HINT_START);
+        o.add("rules", rules(hintStart < 0 ? all : all.subList(0, hintStart), c.getName()));
+        o.add("hints", rules(hintStart < 0 ? java.util.Collections.<String>emptyList() : all.subList(hintStart + 1, all.size()), c.getName()));
         o.addProperty("choosable", c.isChoosable());
         o.addProperty("selected", c.isSelected());
         o.addProperty("playable", canPlay != null && canPlay.containsObject(c.getId()));
@@ -284,7 +289,12 @@ final class ViewMapper {
         o.addProperty("colors", c.getColor() == null ? "" : c.getColor().toString());
         o.addProperty("frameColors", c.getFrameColor() == null ? "" : c.getFrameColor().toString());
         o.addProperty("rarity", c.getRarity() == null ? null : c.getRarity().name());
-        o.add("rules", rules(c.getRules(), source == null ? c.getName() : source.getName()));
+        List<String> allRules = c.getRules() == null ? java.util.Collections.emptyList() : c.getRules();
+        // XMage appends its hints (commander info, day/night, counts, restrictions) after a marker line
+        int hintStart = allRules.indexOf(HINT_START);
+        String selfName = source == null ? c.getName() : source.getName();
+        o.add("rules", rules(hintStart < 0 ? allRules : allRules.subList(0, hintStart), selfName));
+        o.add("hints", rules(hintStart < 0 ? java.util.Collections.<String>emptyList() : allRules.subList(hintStart + 1, allRules.size()), selfName));
         o.addProperty("power", c.getPower());
         o.addProperty("toughness", c.getToughness());
         o.addProperty("loyalty", c.getLoyalty());

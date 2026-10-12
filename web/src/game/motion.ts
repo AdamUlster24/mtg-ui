@@ -8,8 +8,14 @@ import { useStore } from '../store'
  *  - cards that vanish into a hidden zone leave a "ghost" that flies there
  */
 
-const DURATION = 420
+const BASE_DURATION = 420
 const EASING = 'cubic-bezier(0.2, 0.8, 0.2, 1)'
+
+/** 1 = normal, smaller = faster, 0 = animations off (see the "This screen" settings) */
+export function speed(): number {
+  const mode = useStore.getState().prefs.animations
+  return mode === 'off' ? 0 : mode === 'fast' ? 0.5 : 1
+}
 
 /** every card that has its own element on the table */
 function visibleIds(game: GameView | null): Set<string> {
@@ -20,6 +26,7 @@ function visibleIds(game: GameView | null): Set<string> {
   for (const p of game.players) {
     for (const c of p.battlefield) ids.add(c.id)
     for (const c of p.commandZone) ids.add(c.id)
+    if (p.topCard) ids.add(p.topCard.id)
     const grave = p.graveyard.at(-1)
     const exile = p.exile.at(-1)
     if (grave) ids.add(grave.id)
@@ -31,6 +38,9 @@ function visibleIds(game: GameView | null): Set<string> {
 let previous = new Set<string>()
 let hadGame = false
 const handShrank = new Set<string>()
+const libraryShrank = new Set<string>()
+// where the thing that just left the stack was: tokens and other new permanents come out of there
+let resolvedAt: DOMRect | null = null
 
 /** was this card already on screen before the current snapshot */
 export const wasVisible = (id: string) => previous.has(id)
@@ -38,11 +48,18 @@ export const wasVisible = (id: string) => previous.has(id)
 export const animateEntrances = () => hadGame
 /** the player's hand got smaller with the current snapshot, i.e. they played something from it */
 export const playedFromHand = (playerId: string) => handShrank.has(playerId)
+/** the player's library got smaller with the current snapshot (draw, mill, search) */
+export const tookFromLibrary = (playerId: string) => libraryShrank.has(playerId)
+/** position of the spell or ability that resolved with the current snapshot, if any */
+export const resolvedOrigin = () => resolvedAt
 
 const center = (r: DOMRect) => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 })
 
 /** Moves `el` (already at its final place) in from `origin` */
-export function flyIn(el: HTMLElement, origin: Element | null, delay = 0) {
+export function flyIn(el: HTMLElement, origin: Element | DOMRect | null, delay = 0) {
+  const k = speed()
+  if (k === 0) return
+  const DURATION = BASE_DURATION * k
   const to = el.getBoundingClientRect()
   if (!origin || to.width === 0) {
     el.animate(
@@ -50,11 +67,11 @@ export function flyIn(el: HTMLElement, origin: Element | null, delay = 0) {
         { transform: 'scale(0.55)', opacity: 0 },
         { transform: 'scale(1)', opacity: 1 },
       ],
-      { duration: 300, easing: EASING, delay, fill: 'backwards' },
+      { duration: 300 * k, easing: EASING, delay: delay * k, fill: 'backwards' },
     )
     return
   }
-  const from = origin.getBoundingClientRect()
+  const from = origin instanceof DOMRect ? origin : origin.getBoundingClientRect()
   const a = center(from)
   const b = center(to)
   const scale = Math.max(0.2, Math.min(1.5, from.width / to.width))
@@ -63,7 +80,7 @@ export function flyIn(el: HTMLElement, origin: Element | null, delay = 0) {
       { transform: `translate(${a.x - b.x}px, ${a.y - b.y}px) scale(${scale})`, opacity: 0.4 },
       { transform: 'translate(0, 0) scale(1)', opacity: 1 },
     ],
-    { duration: DURATION, easing: EASING, delay, fill: 'backwards' },
+    { duration: DURATION, easing: EASING, delay: delay * k, fill: 'backwards' },
   )
 }
 
@@ -78,7 +95,10 @@ function ghostLayer(): HTMLElement {
 }
 
 /** A copy of a card that is about to disappear, flying to `target` (or just fading) */
-function flyOut(el: HTMLElement, target: Element | null) {
+function flyOut(el: HTMLElement, target: Element | null, countered = false) {
+  const k = speed()
+  if (k === 0) return
+  const DURATION = BASE_DURATION * k * (countered ? 1.6 : 1)
   const from = el.getBoundingClientRect()
   if (from.width === 0) return
   const ghost = el.cloneNode(true) as HTMLElement
@@ -89,6 +109,7 @@ function flyOut(el: HTMLElement, target: Element | null) {
     node.removeAttribute('data-name')
   }
   ghost.classList.add('fly-ghost')
+  if (countered) ghost.classList.add('countered')
   ghost.style.cssText = `position:fixed;left:${from.left}px;top:${from.top}px;width:${from.width}px;height:${from.height}px;margin:0;transform:none;`
   ghostLayer().appendChild(ghost)
 
@@ -114,13 +135,25 @@ function onSnapshot(next: GameView | null, prev: GameView | null) {
   hadGame = !!prev
   previous = visibleIds(prev)
   handShrank.clear()
+  libraryShrank.clear()
+  resolvedAt = null
   if (!next || !prev) return
 
   const before = new Map(prev.players.map((p) => [p.id, p]))
   for (const p of next.players) {
     const old = before.get(p.id)
     if (old && p.handCount < old.handCount) handShrank.add(p.id)
+    if (old && p.libraryCount < old.libraryCount) libraryShrank.add(p.id)
   }
+  // something left the stack: remember where it was (its source, for an ability)
+  const stillOnStack = new Set(next.stack.map((c) => c.id))
+  const resolved = prev.stack.find((c) => !stillOnStack.has(c.id))
+  if (resolved) {
+    const source = resolved.isAbility && resolved.sourceCard ? document.querySelector(`[data-oid="${resolved.sourceCard.id}"]`) : null
+    const at = source ?? document.querySelector(`[data-oid="${resolved.id}"]`)
+    resolvedAt = at ? at.getBoundingClientRect() : null
+  }
+  const lastLog = useStore.getState().log.slice(-4).map((l) => l.message).join(' ')
 
   const now = visibleIds(next)
   for (const id of previous) {
@@ -128,7 +161,9 @@ function onSnapshot(next: GameView | null, prev: GameView | null) {
     // this runs before React re-renders, so the card's element is still where it was
     const el = document.querySelector<HTMLElement>(`[data-oid="${id}"]`)
     if (!el) continue
-    flyOut(el, destination(id, el, next, before))
+    // a countered spell is crossed out on its way to the graveyard
+    const countered = prev.stack.some((c) => c.id === id && !c.isAbility) && /counter/i.test(lastLog)
+    flyOut(el, destination(id, el, next, before), countered)
   }
 }
 

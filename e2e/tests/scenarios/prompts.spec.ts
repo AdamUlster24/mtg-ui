@@ -19,6 +19,7 @@ import {
   press,
   setAmount,
   setAmounts,
+  setSetting,
   startGame,
   until,
   waitPrompt,
@@ -118,8 +119,7 @@ test('ability picker and paying from the mana pool', async ({ browser }) => {
   await cheat(a, [`battlefield:${a.name}:Karplusan Forest:1`, `hand:${a.name}:Bonesplitter:1`])
 
   // spend the pool by hand for this test
-  await a.page.getByRole('button', { name: /More/ }).click()
-  await a.page.getByRole('button', { name: /Spend mana pool automatically/ }).click()
+  await setSetting(a, 'manaPoolAutomatic', false)
 
   await clickCard(a, 'Karplusan Forest', 'mine')
   await waitPrompt(a, 'GAME_CHOOSE_ABILITY')

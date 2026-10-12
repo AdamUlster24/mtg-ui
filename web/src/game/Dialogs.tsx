@@ -135,6 +135,50 @@ function MultiAmountDialog({ prompt }: { prompt: Prompt }) {
 
 const text = (value: unknown): string => (typeof value === 'string' ? value : '')
 
+/**
+ * Several of your triggers go on the stack at once: pick which goes first.
+ * Each one can also be told to always go first or last, so the question stops coming.
+ */
+function TriggerOrderDialog({ prompt, abilities }: { prompt: Prompt; abilities: Card[] }) {
+  const respond = useStore((s) => s.respond)
+  const action = useStore((s) => s.action)
+  const [menu, setMenu] = useState<string | null>(null)
+  const remember = (ability: Card, kind: 'ABILITY_FIRST' | 'ABILITY_LAST' | 'NAME_FIRST' | 'NAME_LAST') => {
+    const byName = kind.startsWith('NAME')
+    action(`TRIGGER_AUTO_ORDER_${kind}`, byName ? plain(ability.rules.join(' ')) : ability.id)
+    // "first": this one goes on the stack now; "last": nothing is picked, XMage asks again without it
+    respond('uuid', kind.endsWith('FIRST') ? ability.id : null)
+    setMenu(null)
+  }
+  return (
+    <Modal title={plain(prompt.data.message) || 'Order your triggers'} wide>
+      <div className="trigger-order">
+        {abilities.map((ability) => (
+          <div key={ability.id} className="trigger" data-trigger={ability.sourceCard?.name ?? ability.name}>
+            <CardView card={ability} shared={false} onClick={() => respond('uuid', ability.id)} />
+            <button className="btn ghost" data-trigger-menu onClick={() => setMenu(menu === ability.id ? null : ability.id)}>
+              Always… ▾
+            </button>
+            {menu === ability.id && (
+              <div className="menu">
+                <button onClick={() => remember(ability, 'ABILITY_FIRST')}>Always put this ability first</button>
+                <button onClick={() => remember(ability, 'ABILITY_LAST')}>Always put this ability last</button>
+                <button onClick={() => remember(ability, 'NAME_FIRST')}>Always first: every ability with this text</button>
+                <button onClick={() => remember(ability, 'NAME_LAST')}>Always last: every ability with this text</button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      <footer>
+        <button className="btn ghost" data-trigger-reset onClick={() => action('TRIGGER_AUTO_ORDER_RESET_ALL')}>
+          Forget remembered orders
+        </button>
+      </footer>
+    </Modal>
+  )
+}
+
 /** Targets of the prompt that sit in a graveyard or in exile, where they can't be clicked directly */
 function offBoardTargets(prompt: Prompt): Card[] {
   const game = prompt.data.game
@@ -193,6 +237,9 @@ export function PromptDialog({ prompt }: { prompt: Prompt }) {
       // with the prompt), or targets lying in a graveyard / exile
       const picks = data.cards1 && data.cards1.length > 0 ? data.cards1 : offBoardTargets(prompt)
       if (picks.length === 0) return null
+      if (data.options?.queryType === 'PICK_ABILITY') {
+        return <TriggerOrderDialog key={prompt.messageId} prompt={prompt} abilities={picks} />
+      }
       if (hidden === prompt.messageId) {
         return (
           <button className="btn primary reopen" onClick={() => setHidden(null)}>

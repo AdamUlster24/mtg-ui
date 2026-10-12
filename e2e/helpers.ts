@@ -484,3 +484,41 @@ export async function hasArt(seat: Seat, locator: Locator, timeout = 20_000): Pr
   }
   return false
 }
+
+// ---------------------------------------------------------------- settings
+
+/** Opens the settings from the game's menu (or the lobby) */
+export async function openSettings(seat: Seat, tab: 'Stops' | 'Playing' | 'This screen' = 'Stops') {
+  const inGame = (await seat.page.locator('.game').count()) > 0
+  if (inGame) {
+    await seat.page.getByRole('button', { name: /More/ }).click()
+    await seat.page.getByRole('button', { name: /Settings and stops/ }).click()
+  } else {
+    await seat.page.getByRole('button', { name: 'Settings', exact: true }).click()
+  }
+  await seat.page.locator('.tabs button', { hasText: tab }).click()
+}
+
+export async function closeSettings(seat: Seat) {
+  await seat.page.locator('.modal footer .primary').click()
+  await expect(seat.page.locator('.tabs')).toHaveCount(0)
+}
+
+/** Ticks or unticks one XMage setting by its UserData name, e.g. "manaPoolAutomatic" or "yourTurn.upkeep" */
+export async function setSetting(seat: Seat, name: string, value: boolean, tab: 'Stops' | 'Playing' = 'Playing') {
+  await openSettings(seat, tab)
+  const box = seat.page.locator(`[data-setting="${name}"]`)
+  if ((await box.isChecked()) !== value) {
+    const saved = seat.page.waitForFunction(
+      ([key, wanted]) => {
+        const settings = (window as any).mtgui.store.getState().settings
+        const current = String(key).split('.').reduce((o: any, k: string) => o?.[k], settings)
+        return current === wanted
+      },
+      [name, value] as const,
+    )
+    await box.click()
+    await saved
+  }
+  await closeSettings(seat)
+}

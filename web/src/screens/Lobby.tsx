@@ -1,9 +1,32 @@
 import { useEffect, useState } from 'react'
 import type { TableInfo } from '../protocol/types'
 import { useStore } from '../store'
+import { SettingsPanel } from './SettingsPanel'
 
 const DECK_KEY = 'mtgui.deck'
 const DECK_TYPE_KEY = 'mtgui.deckType'
+const TABLE_KEY = 'mtgui.tableOptions'
+
+/** What the host can set for a new table; saved for the next time */
+interface TableChoices {
+  bestOf: 1 | 3
+  startLife: number
+  mulliganType: string
+  freeMulligans: number
+  timeLimit: string
+  bufferTime: string
+  rollbackTurnsAllowed: boolean
+}
+
+const DEFAULT_TABLE: TableChoices = { bestOf: 1, startLife: 40, mulliganType: 'GAME_DEFAULT', freeMulligans: 0, timeLimit: 'NONE', bufferTime: 'NONE', rollbackTurnsAllowed: true }
+
+function loadTable(): TableChoices {
+  try {
+    return { ...DEFAULT_TABLE, ...JSON.parse(localStorage.getItem(TABLE_KEY) ?? '{}') }
+  } catch {
+    return DEFAULT_TABLE
+  }
+}
 
 interface DeckCheck {
   mainCount: number
@@ -12,7 +35,14 @@ interface DeckCheck {
 }
 
 export function Lobby() {
-  const { userName, deckTypes, table, setTable, request, notify } = useStore()
+  const { userName, deckTypes, table, setTable, request, notify, tableOptions } = useStore()
+  const [showSettings, setShowSettings] = useState(false)
+  const [choices, setChoices] = useState<TableChoices>(loadTable)
+  const choose = (change: Partial<TableChoices>) => {
+    const next = { ...choices, ...change }
+    setChoices(next)
+    localStorage.setItem(TABLE_KEY, JSON.stringify(next))
+  }
   const [deck, setDeck] = useState(() => localStorage.getItem(DECK_KEY) ?? '')
   const [deckType, setDeckType] = useState(() => localStorage.getItem(DECK_TYPE_KEY) ?? '')
   const [check, setCheck] = useState<DeckCheck | null>(null)
@@ -73,7 +103,11 @@ export function Lobby() {
       <header className="lobby-head">
         <h1>MTG UI</h1>
         <span className="muted">Signed in as {userName}</span>
+        <button className="btn" onClick={() => setShowSettings(true)}>
+          Settings
+        </button>
       </header>
+      {showSettings && <SettingsPanel onClose={() => setShowSettings(false)} />}
 
       <div className="lobby-grid">
         <section className="panel">
@@ -165,13 +199,79 @@ export function Lobby() {
                     ))}
                 </select>
               </label>
+              <details className="table-options">
+                <summary>Table options</summary>
+                <label className="field">
+                  <span>Match</span>
+                  <select data-option="bestOf" value={choices.bestOf} onChange={(e) => choose({ bestOf: Number(e.target.value) as 1 | 3 })}>
+                    <option value={1}>Single game</option>
+                    <option value={3}>Best of three (with sideboarding)</option>
+                  </select>
+                </label>
+                <label className="field">
+                  <span>Starting life</span>
+                  <input data-option="startLife" type="number" min={1} max={999} value={choices.startLife} onChange={(e) => choose({ startLife: Math.max(1, Math.min(999, e.target.valueAsNumber || 40)) })} />
+                </label>
+                <label className="field">
+                  <span>Mulligan rule</span>
+                  <select data-option="mulliganType" value={choices.mulliganType} onChange={(e) => choose({ mulliganType: e.target.value })}>
+                    {(tableOptions?.mulliganTypes ?? []).map((o) => (
+                      <option key={o.key} value={o.key}>
+                        {o.text}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="field">
+                  <span>Free mulligans</span>
+                  <input data-option="freeMulligans" type="number" min={0} max={5} value={choices.freeMulligans} onChange={(e) => choose({ freeMulligans: Math.max(0, Math.min(5, e.target.valueAsNumber || 0)) })} />
+                </label>
+                <label className="field">
+                  <span>Time limit per player</span>
+                  <select data-option="timeLimit" value={choices.timeLimit} onChange={(e) => choose({ timeLimit: e.target.value })}>
+                    {(tableOptions?.timeLimits ?? []).map((o) => (
+                      <option key={o.key} value={o.key}>
+                        {o.text}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="field">
+                  <span>Free seconds per priority (before the clock runs)</span>
+                  <select data-option="bufferTime" value={choices.bufferTime} onChange={(e) => choose({ bufferTime: e.target.value })}>
+                    {(tableOptions?.bufferTimes ?? []).map((o) => (
+                      <option key={o.key} value={o.key}>
+                        {o.text}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="setting">
+                  <input data-option="rollbackTurnsAllowed" type="checkbox" checked={choices.rollbackTurnsAllowed} onChange={(e) => choose({ rollbackTurnsAllowed: e.target.checked })} />
+                  <span>Players may ask to roll back turns</span>
+                </label>
+              </details>
               <button
                 className="btn primary big"
                 disabled={busy || !deckReady}
                 onClick={() =>
                   run(async () => {
                     const gameType = /freeform/i.test(deckType) ? 'Freeform Commander Two Player Duel' : undefined
-                    setTable(await request<TableInfo>('createTable', { deck, deckType, gameType }))
+                    setTable(
+                      await request<TableInfo>('createTable', {
+                        deck,
+                        deckType,
+                        gameType,
+                        winsNeeded: choices.bestOf === 3 ? 2 : 1,
+                        // 40 is the format's own starting life: only send a number when it was changed
+                        startLife: choices.startLife === 40 ? 0 : choices.startLife,
+                        mulliganType: choices.mulliganType,
+                        freeMulligans: choices.freeMulligans,
+                        timeLimit: choices.timeLimit,
+                        bufferTime: choices.bufferTime,
+                        rollbackTurnsAllowed: choices.rollbackTurnsAllowed,
+                      }),
+                    )
                   })
                 }
               >

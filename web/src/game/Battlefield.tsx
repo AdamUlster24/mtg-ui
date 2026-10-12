@@ -1,6 +1,6 @@
 import type { Card, GameView, Player } from '../protocol/types'
 import { CardView } from './CardView'
-import { playedFromHand } from './motion'
+import { playedFromHand, resolvedOrigin } from './motion'
 
 interface Slot {
   key: string
@@ -82,6 +82,8 @@ function Row({
   className: string
   enterFrom: string | null
 }) {
+  // tokens and other things an effect creates come out of the spell or ability that made them
+  const origin = (card: Card) => enterFrom ?? (card.token ? resolvedOrigin() : null)
   return (
     <div className={`bf-row ${className}`}>
         {slots.map((slot) => (
@@ -92,12 +94,12 @@ function Row({
           >
             {slot.attachments.map((card, i) => (
               <div key={card.id} className="attachment" style={{ ['--i' as string]: slot.attachments.length - i }}>
-                <CardView card={card} enterFrom={enterFrom} />
+                <CardView card={card} enterFrom={origin(card)} />
               </div>
             ))}
             {slot.cards.map((card, i) => (
               <div key={card.id} className="piled" style={{ ['--i' as string]: i }}>
-                <CardView card={card} attacking={attacking.has(card.id)} blocking={blocking.has(card.id)} enterFrom={enterFrom} />
+                <CardView card={card} attacking={attacking.has(card.id)} blocking={blocking.has(card.id)} enterFrom={origin(card)} />
               </div>
             ))}
             {slot.cards.length > 1 && <span className="pile-count">×{slot.cards.length}</span>}

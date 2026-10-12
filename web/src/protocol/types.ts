@@ -25,6 +25,8 @@ export interface Card {
   frameColors?: string
   rarity?: string
   rules: string[]
+  /** XMage's own notes about the card: commander info, day/night, counts, restrictions */
+  hints?: string[]
   power?: string
   toughness?: string
   loyalty?: string
@@ -48,6 +50,31 @@ export interface Card {
   playableAbilities?: string[]
   secondFace?: Card
   sourceCard?: Card
+  /** what a face-down, copied or transformed permanent really is, when this player may know */
+  original?: Card
+  ability?: Card
+  displayFullName?: string
+  alternateName?: string
+  startingLoyalty?: string
+  startingDefense?: string
+  subTypes?: string[]
+  superTypes?: string[]
+  frameStyle?: string
+  artRect?: string
+  extraDeckCard?: boolean
+  rotate?: boolean
+  usesVariousArt?: boolean
+  gameObject?: boolean
+  bandedCards?: string[]
+  pairedCard?: string
+  leftHalf?: CardHalf
+  rightHalf?: CardHalf
+  icons?: CardIcon[]
+  basePower?: number
+  baseToughness?: number
+  colorIdentity?: string
+  originalIsCopy?: boolean
+  controlledByOwner?: boolean
   // permanents only
   permanent?: boolean
   tapped?: boolean
@@ -64,8 +91,28 @@ export interface Card {
   attachments?: string[]
   morphed?: boolean
   manifested?: boolean
+  disguised?: boolean
+  cloaked?: boolean
+  attachedControllerDiffers?: boolean
+  mutated?: boolean
+  mutateView?: { id: string; name: string }
   // command zone only
   commandKind?: 'commander' | 'emblem' | 'dungeon' | 'plane' | 'other'
+}
+
+export interface CardHalf {
+  name: string
+  manaCost: string
+  typeLine: string
+  rules: string[]
+  /** "Adventure", "Omen", ... when the half is a spell of the same card */
+  spellType?: string
+}
+
+export interface CardIcon {
+  type: string
+  text: string
+  hint: string
 }
 
 export type ManaSymbol = 'W' | 'U' | 'B' | 'R' | 'G' | 'C'
@@ -80,6 +127,20 @@ export interface Player {
   active: boolean
   hasPriority: boolean
   hasLeft: boolean
+  human?: boolean
+  timerActive?: boolean
+  priorityTimeLeftSecs?: number
+  bufferTimeLeft?: number
+  passedTurn?: boolean
+  passedUntilEndOfTurn?: boolean
+  passedUntilNextMain?: boolean
+  passedUntilStackResolved?: boolean
+  passedAllTurns?: boolean
+  passedUntilEndStepBeforeMyTurn?: boolean
+  attachments?: string[]
+  sideboard?: Card[]
+  wins?: number
+  winsNeeded?: number
   undoSteps: number
   monarch: boolean
   initiative: boolean
@@ -124,6 +185,14 @@ export interface GameView {
   revealed: NamedCards[]
   companion: NamedCards[]
   lookedAt: NamedCards[]
+  /** hands of players I control at the moment */
+  opponentHands: NamedCards[]
+  watchedHands: NamedCards[]
+  helperEmblems: Card[]
+  /** chess clock of the table in seconds, 0 = none */
+  priorityTime: number
+  bufferTime: number
+  rollbackTurnsAllowed?: boolean
 }
 
 export interface Choice {
@@ -179,6 +248,8 @@ export interface TableInfo {
   state?: string
   stateText?: string
   passworded?: boolean
+  info?: string
+  infoFull?: string
   seats?: { playerId: string | null; playerName: string; playerType: string }[]
 }
 
@@ -194,6 +265,9 @@ export interface Resume {
   connected: boolean
   userName?: string
   testMode?: boolean
+  settings?: ServerSettings
+  defaultSettings?: ServerSettings
+  tableOptions?: TableOptions
   gameTypes?: string[]
   deckTypes?: string[]
   table?: TableInfo | null
@@ -207,6 +281,7 @@ export interface ChatLine {
   turnInfo: string | null
   message: string
   messageType: string | null
+  color?: string | null
 }
 
 export interface GameEnd {
@@ -214,6 +289,67 @@ export interface GameEnd {
   gameInfo: string
   matchInfo: string
   additionalInfo: string
+  wins: number
+  loses: number
+  winsNeeded: number
+  /** false: another game of the match follows (after sideboarding) */
+  matchOver: boolean
+  players: { name: string; life: number; wins: number; hasLeft: boolean }[]
+  match?: { name: string; gameType: string; deckType: string; players: string; result: string; games: number }
+}
+
+/** XMage's per-player preferences (mage.players.net.UserData) */
+export interface StepStops {
+  upkeep: boolean
+  draw: boolean
+  main1: boolean
+  beforeCombat: boolean
+  endOfCombat: boolean
+  main2: boolean
+  endOfTurn: boolean
+}
+
+export interface ServerSettings {
+  yourTurn: StepStops
+  opponentTurn: StepStops
+  stopOnDeclareAttackers: boolean
+  stopOnDeclareBlockersWithZeroPermanents: boolean
+  stopOnDeclareBlockersWithAnyPermanents: boolean
+  stopOnAllMainPhases: boolean
+  stopOnAllEndPhases: boolean
+  stopOnStackNewObjects: boolean
+  confirmEmptyManaPool: boolean
+  askMoveToGraveOrder: boolean
+  manaPoolAutomatic: boolean
+  manaPoolAutomaticRestricted: boolean
+  passPriorityCast: boolean
+  passPriorityActivation: boolean
+  autoOrderTrigger: boolean
+  autoTargetLevel: number
+  useSameSettingsForReplacementEffects: boolean
+  useFirstManaAbility: boolean
+  allowRequestShowHandCards: boolean
+  flagName: string
+  avatarId: number
+}
+
+export interface Option {
+  key: string
+  text: string
+}
+
+export interface TableOptions {
+  mulliganTypes: Option[]
+  timeLimits: Option[]
+  bufferTimes: Option[]
+}
+
+/** Sideboarding between the games of a match */
+export interface Sideboarding {
+  tableId: string
+  /** seconds the server allows */
+  time: number
+  deck: { name: string; main: Card[]; sideboard: Card[] }
 }
 
 export interface ServerEvent {

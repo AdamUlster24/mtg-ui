@@ -64,10 +64,9 @@ test('two triggers at once: the player orders them', async ({ browser }) => {
     expect(s.prompt.data.cards1.map((c: any) => c.sourceCard.name).sort()).toEqual(['Impact Tremors', 'Soul Warden'])
     // each trigger is shown with its source's art and its text, never "Ability deals..."
     expect(JSON.stringify(s.prompt.data.cards1.map((c: any) => c.rules))).not.toContain('Ability deals')
-    await expect(a.page.locator('.modal .card-grid .card .ability-strip')).toHaveCount(2)
-    await expect(a.page.locator('.modal .card-grid .card.dimmed')).toHaveCount(0)
-    await expect(a.page.locator('.modal .card-grid .card')).toHaveCount(2)
-    await a.page.locator('.modal .card-grid .card').first().click()
+    await expect(a.page.locator('.modal .trigger-order .trigger .ability-strip')).toHaveCount(2)
+    await expect(a.page.locator('.modal .trigger-order .trigger')).toHaveCount(2)
+    await a.page.locator('.modal .trigger-order .trigger .card').first().click()
     s = await passUntil(table, a, 'both triggers to resolve', (x) => me(x).life === 41 && opponent(x).life === 39)
   }
   expect(me(s).life).toBe(41)
@@ -168,7 +167,7 @@ test('asking the opponent to restart the turn', async ({ browser }) => {
   await until(a, 'the land', (x) => findPermanent(x, 'Forest'))
 
   await a.page.getByRole('button', { name: /More/ }).click()
-  await a.page.getByRole('button', { name: 'Ask to restart this turn' }).click()
+  await a.page.getByRole('button', { name: 'Roll back to the start of this turn' }).click()
   // the opponent decides
   await expect(b.page.locator('.modal', { hasText: /roll ?back/i })).toBeVisible()
   await b.page.locator('.modal footer button').first().click()
