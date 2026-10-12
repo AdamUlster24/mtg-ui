@@ -50,6 +50,10 @@ export function Lobby() {
   const [busy, setBusy] = useState(false)
 
   const commanderTypes = deckTypes.filter((t) => /commander/i.test(t))
+  // a regular 60-card duel is there for matches with sideboarding, which XMage does not do in Commander
+  const DUEL = 'Constructed - Freeform'
+  const format = deckType === DUEL ? 'duel' : 'commander'
+  const formatOf = (t: TableInfo) => (/commander/i.test(t.gameType ?? '') ? 'commander' : 'duel')
 
   // validate the pasted list against the XMage card database while typing
   useEffect(() => {
@@ -59,10 +63,10 @@ export function Lobby() {
       return
     }
     const timer = window.setTimeout(() => {
-      request<DeckCheck>('checkDeck', { deck }).then(setCheck).catch(() => {})
+      request<DeckCheck>('checkDeck', { deck, format }).then(setCheck).catch(() => {})
     }, 500)
     return () => window.clearTimeout(timer)
-  }, [deck, request])
+  }, [deck, request, format])
 
   useEffect(() => {
     const load = () => {
@@ -126,7 +130,11 @@ export function Lobby() {
             <div className={`deck-status ${check.errors.length ? 'bad' : 'good'}`}>
               <div>
                 {check.mainCount} cards
-                {check.commanders.length > 0 ? ` · Commander: ${check.commanders.join(' & ')}` : ' · no commander found'}
+                {format === 'duel'
+                  ? ` · sideboard: ${check.commanders.length}`
+                  : check.commanders.length > 0
+                    ? ` · Commander: ${check.commanders.join(' & ')}`
+                    : ' · no commander found'}
               </div>
               {check.errors.slice(0, 8).map((e) => (
                 <div key={e} className="deck-error">
@@ -183,6 +191,7 @@ export function Lobby() {
               <label className="field">
                 <span>Deck rules</span>
                 <select
+                  data-option="deckType"
                   value={deckType}
                   onChange={(e) => {
                     setDeckType(e.target.value)
@@ -197,6 +206,7 @@ export function Lobby() {
                         {t.replace('Variant Magic - ', '')}
                       </option>
                     ))}
+                  {deckTypes.includes(DUEL) && <option value={DUEL}>Regular duel, any cards (60+ cards, with a sideboard)</option>}
                 </select>
               </label>
               <details className="table-options">
@@ -256,10 +266,11 @@ export function Lobby() {
                 disabled={busy || !deckReady}
                 onClick={() =>
                   run(async () => {
-                    const gameType = /freeform/i.test(deckType) ? 'Freeform Commander Two Player Duel' : undefined
+                    const gameType = deckType === DUEL ? 'Two Player Duel' : /freeform/i.test(deckType) ? 'Freeform Commander Two Player Duel' : undefined
                     setTable(
                       await request<TableInfo>('createTable', {
                         deck,
+                        format,
                         deckType,
                         gameType,
                         winsNeeded: choices.bestOf === 3 ? 2 : 1,
@@ -291,7 +302,7 @@ export function Lobby() {
                   <button
                     className="btn primary"
                     disabled={busy || !deckReady}
-                    onClick={() => run(async () => setTable(await request<TableInfo>('joinTable', { tableId: t.id, deck })))}
+                    onClick={() => run(async () => setTable(await request<TableInfo>('joinTable', { tableId: t.id, deck, format: formatOf(t) })))}
                   >
                     Join
                   </button>

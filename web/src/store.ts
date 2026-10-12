@@ -172,7 +172,8 @@ export const useStore = create<State>((set, get) => {
     switch (event.method) {
       case 'SIDEBOARD':
       case 'CONSTRUCT':
-        set({ sideboarding: { tableId: data.tableId, time: data.time, deck: data.deck }, screen: 'sideboard', gameEnd: null })
+        // the result of the game just played stays, the sideboarding screen shows it
+        set({ sideboarding: { tableId: data.tableId, time: data.time, deck: data.deck }, screen: 'sideboard' })
         break
       case 'VIEW_SIDEBOARD':
         set({ showSideboardOf: data.playerId })

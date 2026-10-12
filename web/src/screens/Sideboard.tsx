@@ -5,7 +5,7 @@ import { useStore } from '../store'
 
 /** Between the games of a match: move cards between main deck and sideboard, then submit */
 export function Sideboard() {
-  const { sideboarding, request, notify, userName } = useStore()
+  const { sideboarding, request, notify, userName, gameEnd } = useStore()
   const [side, setSide] = useState<Set<string>>(() => new Set(sideboarding?.deck.sideboard.map((c) => c.id)))
   const [left, setLeft] = useState(sideboarding?.time ?? 0)
   const [sent, setSent] = useState(false)
@@ -44,6 +44,11 @@ export function Sideboard() {
         <span className="muted">
           {userName}, adjust your deck. Click a card to move it. In Commander the sideboard holds your commander.
         </span>
+        {gameEnd && (
+          <span className={`last-result ${gameEnd.won ? 'won' : 'lost'}`} data-last-result>
+            {gameEnd.won ? 'You won' : 'You lost'} the last game
+          </span>
+        )}
         <span className="sb-clock" title="Time left to submit">
           {clock}
         </span>

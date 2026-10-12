@@ -2727,3 +2727,18 @@ table.stops th {
 .tray-list.past {
   border-style: dashed;
 }
+
+.last-result {
+  padding: 0.2rem 0.8rem;
+  border-radius: 999px;
+  font-weight: 700;
+  border: 1px solid currentColor;
+}
+
+.last-result.won {
+  color: var(--selected);
+}
+
+.last-result.lost {
+  color: #ff9b9b;
+}

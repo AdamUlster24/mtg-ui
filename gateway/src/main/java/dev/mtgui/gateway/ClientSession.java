@@ -353,7 +353,7 @@ final class ClientSession implements MageClient {
     }
 
     private DeckCardLists deck(JsonObject msg) throws GatewayException {
-        DeckText.Result result = DeckText.parse(string(msg, "deck"), string(msg, "commander"));
+        DeckText.Result result = DeckText.parse(string(msg, "deck"), string(msg, "commander"), "duel".equals(string(msg, "format")));
         if (!result.errors.isEmpty()) {
             throw new GatewayException(String.join("\n", result.errors));
         }
@@ -364,7 +364,7 @@ final class ClientSession implements MageClient {
     }
 
     private JsonElement checkDeck(JsonObject msg) {
-        DeckText.Result result = DeckText.parse(string(msg, "deck"), string(msg, "commander"));
+        DeckText.Result result = DeckText.parse(string(msg, "deck"), string(msg, "commander"), "duel".equals(string(msg, "format")));
         JsonObject o = new JsonObject();
         o.addProperty("mainCount", result.mainCount);
         JsonArray commanders = new JsonArray();

@@ -35,6 +35,13 @@ final class DeckText {
     }
 
     static Result parse(String text, String commanderNames) {
+        return parse(text, commanderNames, false);
+    }
+
+    /**
+     * @param withSideboard a regular (non-Commander) deck: the "Sideboard" section is a real sideboard
+     */
+    static Result parse(String text, String commanderNames, boolean withSideboard) {
         Result result = new Result();
         List<String> wantedCommanders = new ArrayList<>();
         if (commanderNames != null) {
@@ -61,6 +68,12 @@ final class DeckText {
             }
             if (header.equals("deck") || header.equals("mainboard") || header.equals("main") || header.equals("companion")) {
                 commanderSection = false;
+                skipSection = false;
+                continue;
+            }
+            if (header.equals("sideboard") && withSideboard) {
+                // XMage keeps commanders and sideboard cards in the same list
+                commanderSection = true;
                 skipSection = false;
                 continue;
             }
