@@ -412,8 +412,12 @@ export async function passUntil(table: Table, watch: Seat, what: string, done: (
       const s = seat === watch ? state : await snap(seat)
       if (!s.prompt || s.answering) continue
       if (s.prompt.method === 'GAME_SELECT') {
-        await seat.page.locator('.prompt-buttons .primary').click()
-        await until(seat, 'the pass to register', (x) => x.prompt?.messageId !== s.prompt!.messageId).catch(() => {})
+        // the prompt may be gone by now (an automatic pass got there first): then there is nothing to click
+        const clicked = await seat.page
+          .locator('.prompt-buttons .primary')
+          .click({ timeout: 2000 })
+          .then(() => true, () => false)
+        if (clicked) await until(seat, 'the pass to register', (x) => x.prompt?.messageId !== s.prompt!.messageId, 5000).catch(() => {})
       } else if (s.prompt.method === 'GAME_TARGET' && /discard/i.test(String(s.prompt.data.message))) {
         // end of turn with more than seven cards: not what any test is about
         await clickVisible(seat, seat.page.locator('.hand .card.mark-target').first())
