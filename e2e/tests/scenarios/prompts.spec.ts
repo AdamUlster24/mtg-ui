@@ -200,3 +200,23 @@ test('choice list with a filter: Cavern of Souls', async ({ browser }) => {
   expect(logText(after)).toMatch(/Elf/)
   await finish(table)
 })
+
+test('a library search with nothing to find offers no card and ends with Done', async ({ browser }) => {
+  const table = await startGame(browser)
+  const { a } = table
+  // the test library holds no Forest
+  await cheat(a, [...lands(a, { Forest: 3 }), `hand:${a.name}:Wood Elves:1`])
+  await cast(a, 'Wood Elves')
+  const s = await passUntil(table, a, 'the library search', (x) => x.prompt?.method === 'GAME_TARGET' && x.prompt.data.cards1?.length > 0)
+  expect(s.prompt!.data.cards1.some((c: any) => c.subTypes?.includes('Forest'))).toBe(false)
+  const grid = a.page.locator('.modal .card-grid .card')
+  await expect(grid.first()).toBeVisible()
+  expect(await a.page.locator('.modal .card-grid .card:not(.dimmed)').count()).toBe(0)
+  // clicking a card that can't be taken does nothing
+  await grid.first().click()
+  await a.page.waitForTimeout(600)
+  expect((await snap(a)).prompt!.messageId).toBe(s.prompt!.messageId)
+  await a.page.locator('.modal footer .btn:not(.ghost)').click()
+  await until(a, 'the search to end', (x) => x.prompt?.method === 'GAME_SELECT' && x.game.stack.length === 0)
+  await finish(table)
+})

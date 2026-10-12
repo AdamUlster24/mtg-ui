@@ -23,12 +23,13 @@ export function Modal({ title, children, onClose, wide }: { title: string; child
   )
 }
 
-export function CardGrid({ cards, onPick }: { cards: Card[]; onPick?: (card: Card) => void }) {
+export function CardGrid({ cards, onPick, restricted }: { cards: Card[]; onPick?: (card: Card) => void; restricted?: boolean }) {
   const { mark } = useInteraction()
   if (cards.length === 0) return <p className="muted">Empty</p>
   // when picking (e.g. a land out of a whole library), what can be picked comes first;
   // prompts that don't say which cards are legal (ordering triggers) allow all of them
-  const anyMarked = cards.some((card) => mark(card.id, card))
+  // (`restricted`: XMage names the legal cards for this prompt, so when it names none, none can be picked)
+  const anyMarked = restricted || cards.some((card) => mark(card.id, card))
   const pickable = (card: Card) => !onPick || !anyMarked || !!mark(card.id, card)
   const ordered = onPick ? [...cards.filter(pickable), ...cards.filter((c) => !pickable(c))] : cards
   return (
@@ -39,7 +40,7 @@ export function CardGrid({ cards, onPick }: { cards: Card[]; onPick?: (card: Car
           card={card}
           shared={false}
           className={pickable(card) ? '' : 'dimmed'}
-          onClick={onPick ? () => onPick(card) : undefined}
+          onClick={onPick ? () => pickable(card) && onPick(card) : undefined}
         />
       ))}
     </div>
@@ -256,7 +257,7 @@ export function PromptDialog({ prompt }: { prompt: Prompt }) {
       }
       return (
         <Modal title={plain(data.message) || 'Choose'} wide onClose={() => setHidden(prompt.messageId)}>
-          <CardGrid cards={picks} onPick={(card) => respond('uuid', card.id)} />
+          <CardGrid cards={picks} onPick={(card) => respond('uuid', card.id)} restricted={Array.isArray(data.options?.chosenTargets)} />
           <footer>
             <button className="btn ghost" onClick={() => setHidden(prompt.messageId)}>
               Look at the board

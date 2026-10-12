@@ -138,9 +138,9 @@ test('a game through the public link survives a dropped connection and a reload'
   line.down = false
   await a.context.setOffline(false)
   await expect(a.page.locator('.offline')).toHaveCount(0, { timeout: 30_000 })
-  s = await until(a, 'the game after reconnecting', (x) => (x.online && x.screen === 'game' && x.prompt?.method === 'GAME_SELECT' && !x.answering ? x : false), 30_000)
+  // the gateway sends the log again line by line, then the board
+  s = await until(a, 'the game and its log after reconnecting', (x) => (x.online && x.screen === 'game' && x.prompt?.method === 'GAME_SELECT' && !x.answering && x.log.length >= logLines ? x : false), 30_000)
   expect(me(s).battlefield.length).toBe(permanents)
-  expect(s.log.length).toBeGreaterThanOrEqual(logLines)
 
   // and the reconnected player can keep playing: passing priority moves the game on
   const step = s.game.step
