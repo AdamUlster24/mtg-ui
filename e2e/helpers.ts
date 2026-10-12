@@ -139,7 +139,7 @@ export async function startGame(browser: Browser, options: StartOptions = {}): P
 
 /** Fills in "Table options" in the lobby; anything not named goes back to its default */
 export async function setTableOptions(seat: Seat, options: Record<string, string | number | boolean>) {
-  const all = { deckType: '', bestOf: 1, startLife: 40, mulliganType: 'GAME_DEFAULT', freeMulligans: 0, timeLimit: 'NONE', bufferTime: 'NONE', rollbackTurnsAllowed: true, ...options }
+  const all = { deckType: '', bestOf: 1, startLife: 40, startHandSize: 7, mulliganType: 'GAME_DEFAULT', freeMulligans: 0, timeLimit: 'NONE', bufferTime: 'NONE', rollbackTurnsAllowed: true, planeChase: false, ...options }
   const details = seat.page.locator('details.table-options')
   if (!(await details.evaluate((el) => (el as HTMLDetailsElement).open))) await details.locator('summary').click()
   for (const [name, value] of Object.entries(all)) {

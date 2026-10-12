@@ -13,10 +13,14 @@ const MATCHUPS: [string, string][] = [
   ['goblins', 'elves'],
   ['elves', 'soldiers'],
   ['soldiers', 'goblins'],
+  // two-colour decks with planeswalkers, modal spells, tokens, graveyard recursion and counterspells
+  ['azorius', 'golgari'],
+  ['golgari', 'azorius'],
+  ['azorius', 'golgari'],
 ]
 
-for (const [first, second] of MATCHUPS) {
-  test(`full game: ${first} vs ${second}`, async ({ browser }) => {
+for (const [index, [first, second]] of MATCHUPS.entries()) {
+  test(`full game: ${first} vs ${second} (${index + 1})`, async ({ browser }) => {
     const table = await startGame(browser, { server: PLAY_SERVER, deckA: deck(first), deckB: deck(second) })
     const lines: string[] = []
     const report = await playToTheEnd(table, {

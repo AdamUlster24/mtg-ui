@@ -367,4 +367,8 @@ export const useStore = create<State>((set, get) => {
 })
 
 // handle for the e2e tests and for poking at the state from the browser console
-;(window as unknown as { mtgui: unknown }).mtgui = { store: useStore }
+;(window as unknown as { mtgui: unknown }).mtgui = {
+  store: useStore,
+  /** feeds an event to the client as if the gateway had sent it (used to test rare server messages) */
+  inject: (event: ServerEvent) => connection.onEvent(event),
+}

@@ -596,12 +596,20 @@ final class ViewMapper {
         o.addProperty("limited", t.isLimited());
         o.addProperty("tournament", t.isTournament());
         o.addProperty("spectatorsAllowed", t.getSpectatorsAllowed());
+        o.addProperty("quitRatio", t.getQuitRatio());
+        o.addProperty("minimumRating", t.getMinimumRating());
         JsonArray seats = new JsonArray();
         for (SeatView s : t.getSeats()) {
             JsonObject seat = new JsonObject();
             seat.addProperty("playerId", str(s.getPlayerId()));
             seat.addProperty("playerName", s.getPlayerName());
             seat.addProperty("playerType", s.getPlayerType() == null ? null : s.getPlayerType().toString());
+            seat.addProperty("flag", s.getFlagName());
+            // the server's record of the player: past matches and ratings
+            seat.addProperty("history", s.getHistory());
+            seat.addProperty("generalRating", s.getGeneralRating());
+            seat.addProperty("constructedRating", s.getConstructedRating());
+            seat.addProperty("limitedRating", s.getLimitedRating());
             seats.add(seat);
         }
         o.add("seats", seats);
@@ -664,6 +672,11 @@ final class ViewMapper {
             match.addProperty("players", m.getPlayers());
             match.addProperty("result", m.getResult());
             match.addProperty("games", m.getGames() == null ? 0 : m.getGames().size());
+            match.addProperty("matchId", str(m.getMatchId()));
+            match.addProperty("tableId", str(m.getTableId()));
+            match.addProperty("startTime", m.getStartTime() == null ? null : m.getStartTime().getTime());
+            match.addProperty("endTime", m.getEndTime() == null ? null : m.getEndTime().getTime());
+            match.addProperty("rated", m.isRated());
             o.add("match", match);
         }
         return o;
@@ -675,6 +688,10 @@ final class ViewMapper {
         o.addProperty("message", m.getMessage());
         o.addProperty("gameId", str(m.getGameId()));
         o.addProperty("relatedUserId", str(m.getRelatedUserId()));
+        o.addProperty("relatedUserName", m.getRelatedUserName());
+        o.addProperty("matchId", str(m.getMatchId()));
+        o.addProperty("roomId", str(m.getRoomId()));
+        o.addProperty("tableId", str(m.getTableId()));
         JsonArray buttons = new JsonArray();
         addButton(buttons, m.getButton1Text(), m.getButton1Action());
         addButton(buttons, m.getButton2Text(), m.getButton2Action());

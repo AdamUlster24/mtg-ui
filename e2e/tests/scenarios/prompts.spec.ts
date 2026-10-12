@@ -17,6 +17,7 @@ import {
   pickCard,
   pickDone,
   press,
+  snap,
   setAmount,
   setAmounts,
   setSetting,
@@ -71,11 +72,19 @@ test('combat: attackers, two blockers on one attacker, damage assignment', async
   }
   await expect(b.page.locator('.battlefield.mine .card.blocking')).toHaveCount(2)
   await expect(b.page.locator('svg.arrows path.arrow.block')).toHaveCount(2)
+  const group = (await snap(b)).game.combat[0]
+  expect(group).toMatchObject({ blocked: true, defenderName: b.name, defenderId: me(await snap(b)).id })
+  expect(group.attackers).toHaveLength(1)
+  expect(group.blockers).toHaveLength(2)
   await press(b, 'Block')
 
   // the attacker's controller splits 6 damage between the two blockers
   await passUntil(table, a, 'the damage assignment', (x) => x.prompt?.method === 'GAME_GET_MULTI_AMOUNT')
   await expect(a.page.locator('.modal .multi-amount input')).toHaveCount(2)
+  const assign = (await snap(a)).prompt!.data
+  // the dialog's title and header come with the prompt
+  expect(assign.options.title ?? assign.options.header).toBeTruthy()
+  expect(assign.multiAmount).toHaveLength(2)
   await setAmounts(a, [3, 3])
 
   s = await passUntil(table, a, 'combat to finish', (x) => x.game.players.every((p: any) => p.battlefield.length === 0))
@@ -171,7 +180,7 @@ test('targeting a card in the graveyard: Raise Dead', async ({ browser }) => {
   expect(me(s).graveyard.map((c: any) => c.name).sort()).toEqual(['Craw Wurm', 'Mountain', 'Raise Dead'])
 
   // the graveyard can be browsed from the player panel
-  await a.page.locator('.player-panel.mine .zone-piles [title="Graveyard"]').click()
+  await a.page.locator('.player-panel.mine .zone-piles [data-pile^="graveyard"]').click()
   await expect(a.page.locator('.modal .card-grid .card')).toHaveCount(3)
   await a.page.locator('.modal header button').click()
   await finish(table)

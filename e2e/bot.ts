@@ -25,6 +25,10 @@ interface Memory {
   lastMessage: string
   repeats: number
   answered: number
+  /** planeswalkers already activated this turn, spells this player put on the stack, stacks already answered */
+  activated: Set<string>
+  mine: Set<string>
+  responded: Set<string>
 }
 
 const text = (s: Snap) => String(s.prompt?.data.message ?? s.prompt?.data.choice?.message ?? '').replace(/<[^>]+>/g, ' ')
@@ -112,10 +116,28 @@ async function act(seat: Seat, s: Snap, mem: Memory): Promise<void> {
       }
       const myTurn = s.game.activePlayerId === s.game.myPlayerId
       const main = s.game.step === 'PRECOMBAT_MAIN' || s.game.step === 'POSTCOMBAT_MAIN'
+      // the opponent's spell is on the stack: answer it with a counterspell when there is one
+      const top = s.game.stack[0]
+      if (top && !myTurn && !top.isAbility && !mem.mine.has(top.id) && !mem.responded.has(top.id)) {
+        mem.responded.add(top.id)
+        const counter = s.game.hand.find((c: any) => c.playable && /counter target/i.test(c.rules.join(' ')))
+        if (counter) {
+          mem.casting = counter.id
+          await clickVisible(seat, page.locator(`.hand [data-card-id="${counter.id}"]`).first())
+          return
+        }
+      }
       if (myTurn && main && s.game.stack.length === 0 && !/blockers/i.test(message) && mem.stepActions < 25) {
         const options = [...s.game.hand, ...me(s).commandZone].filter((c: any) => c.playable && !mem.failed.has(c.id))
         const land = options.find((c: any) => c.types.includes('LAND'))
         const spell = options.filter((c: any) => !c.types.includes('LAND')).sort((x: any, y: any) => y.manaValue - x.manaValue)[0]
+        // a planeswalker gets one loyalty ability per turn
+        const walker = me(s).battlefield.find((c: any) => c.playable && c.types.includes('PLANESWALKER') && !mem.activated.has(c.id))
+        if (!land && walker && mem.stepActions < 10) {
+          mem.activated.add(walker.id)
+          await clickVisible(seat, byId(seat, walker.id).first())
+          return
+        }
         const pick = land ?? spell
         if (pick) {
           mem.casting = pick.id
@@ -188,7 +210,7 @@ export async function playToTheEnd(table: Table, options: { maxTurns?: number; m
   const prompts: Record<string, number> = {}
   const memory = new Map<Seat, Memory>()
   for (const seat of table.seats) {
-    memory.set(seat, { failed: new Set(), casting: null, turn: 0, stepKey: '', stepActions: 0, lastMessage: '', repeats: 0, answered: -1 })
+    memory.set(seat, { failed: new Set(), casting: null, turn: 0, stepKey: '', stepActions: 0, lastMessage: '', repeats: 0, answered: -1, activated: new Set(), mine: new Set(), responded: new Set() })
   }
   let progress = Date.now()
   let lastTurn = 0
@@ -217,6 +239,7 @@ export async function playToTheEnd(table: Table, options: { maxTurns?: number; m
       if (mem.turn !== s.game.turn) {
         mem.turn = s.game.turn
         mem.failed.clear()
+        mem.activated.clear()
       }
       const stepKey = `${s.game.turn}/${s.game.step}/${s.game.stack.length}`
       mem.stepActions = stepKey === mem.stepKey ? mem.stepActions + 1 : 0
@@ -227,6 +250,7 @@ export async function playToTheEnd(table: Table, options: { maxTurns?: number; m
       if (s.prompt.method === 'GAME_SELECT' && mem.casting && s.game.stack.length > 0) {
         // the last pick made it onto the stack: it was fine
         mem.failed.delete(mem.casting)
+        mem.mine.add(mem.casting)
         mem.casting = null
       }
 

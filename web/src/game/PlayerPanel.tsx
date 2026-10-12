@@ -89,6 +89,8 @@ export function PlayerPanel({ player, game, mine, onShowZone }: Props) {
   const playableGrave = playableIn(player.graveyard)
   const playableExile = playableIn(player.exile)
   const top = player.topCard
+  // like the Swing client: how many card types the graveyard holds (delirium, Tarmogoyf)
+  const cardTypes = new Set(player.graveyard.flatMap((c) => c.types)).size
   const pileOrigin = (pid: string) => (playedFromHand(pid) ? (mine ? '.hand' : '.opp-hand') : tookFromLibrary(pid) ? `[data-pile="library-${pid}"]` : null)
   const commanders = player.commandZone.filter((c) => c.commandKind === 'commander' || !c.commandKind)
   const objects = player.commandZone.filter((c) => c.commandKind && c.commandKind !== 'commander')
@@ -166,7 +168,8 @@ export function PlayerPanel({ player, game, mine, onShowZone }: Props) {
         <button
           className={`pile ${playableGrave ? 'has-playable' : ''}`}
           data-pile={`graveyard-${player.id}`}
-          title="Graveyard"
+          data-card-types={cardTypes}
+          title={`Graveyard · ${cardTypes} card type${cardTypes === 1 ? '' : 's'}`}
           onClick={() => onShowZone(`${player.name}'s graveyard`, 'graveyard')}
         >
           {graveTop ? (

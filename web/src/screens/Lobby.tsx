@@ -11,14 +11,16 @@ const TABLE_KEY = 'mtgui.tableOptions'
 interface TableChoices {
   bestOf: 1 | 3
   startLife: number
+  startHandSize: number
   mulliganType: string
   freeMulligans: number
   timeLimit: string
   bufferTime: string
   rollbackTurnsAllowed: boolean
+  planeChase: boolean
 }
 
-const DEFAULT_TABLE: TableChoices = { bestOf: 1, startLife: 40, mulliganType: 'GAME_DEFAULT', freeMulligans: 0, timeLimit: 'NONE', bufferTime: 'NONE', rollbackTurnsAllowed: true }
+const DEFAULT_TABLE: TableChoices = { bestOf: 1, startLife: 40, startHandSize: 7, mulliganType: 'GAME_DEFAULT', freeMulligans: 0, timeLimit: 'NONE', bufferTime: 'NONE', rollbackTurnsAllowed: true, planeChase: false }
 
 function loadTable(): TableChoices {
   try {
@@ -223,6 +225,10 @@ export function Lobby() {
                   <input data-option="startLife" type="number" min={1} max={999} value={choices.startLife} onChange={(e) => choose({ startLife: Math.max(1, Math.min(999, e.target.valueAsNumber || 40)) })} />
                 </label>
                 <label className="field">
+                  <span>Starting hand size</span>
+                  <input data-option="startHandSize" type="number" min={1} max={20} value={choices.startHandSize} onChange={(e) => choose({ startHandSize: Math.max(1, Math.min(20, e.target.valueAsNumber || 7)) })} />
+                </label>
+                <label className="field">
                   <span>Mulligan rule</span>
                   <select data-option="mulliganType" value={choices.mulliganType} onChange={(e) => choose({ mulliganType: e.target.value })}>
                     {(tableOptions?.mulliganTypes ?? []).map((o) => (
@@ -260,6 +266,12 @@ export function Lobby() {
                   <input data-option="rollbackTurnsAllowed" type="checkbox" checked={choices.rollbackTurnsAllowed} onChange={(e) => choose({ rollbackTurnsAllowed: e.target.checked })} />
                   <span>Players may ask to roll back turns</span>
                 </label>
+                <label className="setting">
+                  <input data-option="planeChase" type="checkbox" checked={choices.planeChase} onChange={(e) => choose({ planeChase: e.target.checked })} />
+                  <span>
+                    Planechase<small>a shared plane card and a planar die</small>
+                  </span>
+                </label>
               </details>
               <button
                 className="btn primary big"
@@ -276,11 +288,13 @@ export function Lobby() {
                         winsNeeded: choices.bestOf === 3 ? 2 : 1,
                         // 40 is the format's own starting life: only send a number when it was changed
                         startLife: choices.startLife === 40 ? 0 : choices.startLife,
+                        startHandSize: choices.startHandSize === 7 ? 0 : choices.startHandSize,
                         mulliganType: choices.mulliganType,
                         freeMulligans: choices.freeMulligans,
                         timeLimit: choices.timeLimit,
                         bufferTime: choices.bufferTime,
                         rollbackTurnsAllowed: choices.rollbackTurnsAllowed,
+                        planeChase: choices.planeChase,
                       }),
                     )
                   })

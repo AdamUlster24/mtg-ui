@@ -137,6 +137,13 @@ export function PromptBar({ prompt, game, onSettings, onHints }: Props) {
         store.action(pass[0])
         return
       }
+      if (e.key === 'F12') {
+        // to the chat (the Swing client's "switch chat" key); opens the log if it was hidden
+        e.preventDefault()
+        store.savePrefs({ showLog: true })
+        window.setTimeout(() => document.querySelector<HTMLInputElement>('.log-panel input')?.focus(), 0)
+        return
+      }
       if (e.key === 'F8') {
         e.preventDefault()
         store.action('TOGGLE_RECORD_MACRO')

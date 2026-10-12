@@ -15,12 +15,12 @@ const strip = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' 
 /** What the game log says happened, for the things the board snapshots don't show */
 export function readLog(line: ChatLine): { kind: Effect['kind'] | 'shuffle' | 'search'; text: string; detail?: string; player?: string } | null {
   const text = strip(line.message)
-  let m = /^(.+?) rolls? (?:a |an )?(?:d\d+ |die )?.*?(\d+)/i.exec(text)
-  if (m && /roll/i.test(text) && /\b(d\d+|die|dice)\b/i.test(text)) return { kind: 'die', text: m[2], detail: text, player: m[1] }
-  m = /coin.*?\b(heads|tails)\b/i.exec(text)
-  if (m && /flip/i.test(text)) return { kind: 'coin', text: m[1].toLowerCase(), detail: text }
-  m = /\b(won|lost) the (?:coin )?flip/i.exec(text)
-  if (m) return { kind: 'coin', text: m[1].toLowerCase() === 'won' ? 'won' : 'lost', detail: text }
+  // "[Roll a die] ann rolled 1d20, result: 14"
+  let m = /\[Roll a die\] (.+?) rolled \S+, result\w*: (\d+)/i.exec(text)
+  if (m) return { kind: 'die', text: m[2], detail: text.replace(/^\[Roll a die\] /, ''), player: m[1] }
+  // "ann flipped Heads" (the "won / lost the flip" line that follows is the same event)
+  m = /^(.+?) flipped (heads|tails)\b/i.exec(text)
+  if (m) return { kind: 'coin', text: m[2].toLowerCase(), detail: text, player: m[1] }
   m = /^(.+?)(?:'s|’s) library is shuffled/i.exec(text) ?? /^(.+?) shuffles/i.exec(text)
   if (m) return { kind: 'shuffle', text: '', player: m[1] }
   m = /^(.+?) searches (?:their|his or her|its) library/i.exec(text)

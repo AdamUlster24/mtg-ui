@@ -404,6 +404,8 @@ final class ClientSession implements MageClient {
             options.setCustomStartHandSizeEnabled(true);
             options.setCustomStartHandSize(Math.min(startHand, 20));
         }
+        // Planechase: a shared plane in the command zone and a planar die
+        options.setPlaneChase(msg.has("planeChase") && msg.get("planeChase").getAsBoolean());
         options.setSkillLevel(SkillLevel.CASUAL);
         options.setRollbackTurnsAllowed(!msg.has("rollbackTurnsAllowed") || msg.get("rollbackTurnsAllowed").getAsBoolean());
         options.setSpectatorsAllowed(true);

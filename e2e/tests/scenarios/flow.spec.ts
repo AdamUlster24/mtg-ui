@@ -91,6 +91,10 @@ test('commander: cast from the command zone, dies, returns to the command zone',
   await payMana(a)
   s = await passUntil(table, a, 'the command zone question', (x) => x.prompt?.method === 'GAME_ASK')
   expect(String(s.prompt!.data.message)).toMatch(/command zone/i)
+  // extra lines XMage sends with a question are shown under it
+  for (const extra of [s.prompt!.data.options.secondMessage, s.prompt!.data.options.hintText].filter(Boolean)) {
+    await expect(a.page.locator('.prompt-second', { hasText: String(extra).replace(/<[^>]+>/g, ' ').trim().slice(0, 20) }).first()).toBeVisible()
+  }
   await a.page.locator('.prompt-buttons .primary').click()
   s = await passUntil(table, a, 'the commander back in the command zone', (x) => me(x).commandZone.length === 1 && x.prompt?.method === 'GAME_SELECT')
   expect(findPermanent(s, 'Isamaru, Hound of Konda')).toBeUndefined()
@@ -156,6 +160,10 @@ test('chat reaches the other player', async ({ browser }) => {
   await a.page.keyboard.press('Enter')
   await expect(b.page.locator('.log-line', { hasText: 'good luck, have fun' })).toBeVisible()
   await expect(b.page.locator('.log-line', { hasText: 'good luck, have fun' })).toContainText(a.name)
+  const line = (await snap(b)).log.find((l: any) => /good luck/.test(l.message)) as any
+  expect(line).toMatchObject({ username: a.name, messageType: 'TALK' })
+  expect(typeof line.time).toBe('number')
+  for (const key of ['turnInfo', 'color', 'sound']) expect(line).toHaveProperty(key)
   await finish(table)
 })
 
@@ -223,6 +231,12 @@ test('winning by combat damage: all attack, result screens, back to the lobby', 
   await expect(a.page.locator('.modal h3')).toHaveText('Victory')
   await expect(b.page.locator('.modal h3')).toHaveText('Defeat')
   await expect(b.page.locator('.player-panel.mine .life')).toHaveText('-2')
+  const end = (await snap(a)).gameEnd
+  for (const key of ['won', 'gameInfo', 'matchInfo', 'additionalInfo', 'wins', 'loses', 'winsNeeded', 'startTime', 'endTime', 'players', 'match']) expect(end, `gameEnd.${key}`).toHaveProperty(key)
+  expect(end).toMatchObject({ won: true, winsNeeded: 1 })
+  expect(end.players.map((p: any) => p.name).sort()).toEqual([a.name, b.name].sort())
+  for (const key of ['name', 'gameType', 'deckType', 'players', 'result', 'games', 'matchId', 'tableId', 'startTime', 'endTime', 'rated']) expect(end.match, `match.${key}`).toHaveProperty(key)
+  expect(end.match.gameType).toBe('Commander Two Player Duel')
 
   for (const seat of table.seats) {
     await seat.page.getByRole('button', { name: 'Back to lobby' }).click()

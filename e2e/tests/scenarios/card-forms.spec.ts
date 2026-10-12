@@ -88,7 +88,7 @@ test('flashback: a card in the graveyard is offered without opening the pile (Th
   await cheat(a, [...lands(a, { Island: 3 }), `graveyard:${a.name}:Think Twice:1`, `graveyard:${a.name}:Grizzly Bears:1`])
   let s = await snap(a)
   const hand = s.game.hand.length
-  const pile = a.page.locator('.player-panel.mine .zone-piles [title="Graveyard"]')
+  const pile = a.page.locator('.player-panel.mine .zone-piles [data-pile^="graveyard"]')
   await expect(pile).toHaveClass(/has-playable/)
   await expect(pile.locator('.pile-playable')).toHaveText('▶1')
 
@@ -227,6 +227,8 @@ test('mutate: a creature merges onto another (Gemrazer)', async ({ browser }) =>
     s = await passUntil(table, a, 'the merged creature', (x) => me(x).battlefield.some((c: any) => c.mutated))
   }
   const merged = me(s).battlefield.find((c: any) => c.mutated)
+  expect(merged.mutateView.name).toBeTruthy()
+  expect(merged.mutateView.id).toBeTruthy()
   expect(me(s).battlefield.filter((c: any) => c.types.includes('CREATURE'))).toHaveLength(1)
   await expect(a.page.locator(`.battlefield.mine .card[data-card-id="${merged.id}"] .mark-chip.mutated`)).toBeVisible()
   await finish(table)
