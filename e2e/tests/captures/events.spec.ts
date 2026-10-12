@@ -72,6 +72,7 @@ async function target(seat: Seat, what: 'me' | 'opponent' | string, zone: 'mine'
   } else {
     await clickCard(seat, what, zone)
   }
+  await until(seat, 'the target to register', (x) => x.prompt?.messageId !== s.prompt!.messageId && !x.answering)
 }
 
 test.beforeAll(() => {

@@ -100,8 +100,15 @@ test('every field of cards and permanents reaches the browser', async ({ browser
 test('the table list and the lobby carry XMage\'s table information', async ({ browser }) => {
   const table = await startGame(browser)
   const { a } = table
-  const tables = await a.page.evaluate(() => (window as any).mtgui.store.getState().request('tables'))
-  const mine = tables.find((t: any) => t.controllerName?.includes(a.name))
+  // the table switches to "dueling" a moment after the game appears
+  let mine: any
+  await expect
+    .poll(async () => {
+      const tables = await a.page.evaluate(() => (window as any).mtgui.store.getState().request('tables'))
+      mine = tables.find((t: any) => t.controllerName?.includes(a.name))
+      return mine?.state
+    })
+    .toBe('DUELING')
   for (const key of ['id', 'name', 'controllerName', 'gameType', 'deckType', 'state', 'stateText', 'info', 'infoFull', 'seatsInfo', 'createTime', 'skillLevel', 'passworded', 'rated', 'limited', 'tournament', 'spectatorsAllowed', 'quitRatio', 'minimumRating', 'seats', 'games']) {
     expect(mine, `table.${key}`).toHaveProperty(key)
   }

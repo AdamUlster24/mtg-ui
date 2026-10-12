@@ -437,7 +437,7 @@ export async function passUntil(table: Table, watch: Seat, what: string, done: (
  */
 export async function resolveUntil(table: Table, watch: Seat, what: string, done: (s: Snap) => unknown, timeout = 40_000) {
   const deadline = Date.now() + timeout
-  const asks = (s: Snap) => /GAME_(CHOOSE_CHOICE|CHOOSE_ABILITY|TARGET|ASK)/.test(s.prompt?.method ?? '') && !/discard/i.test(String(s.prompt?.data.message))
+  const asks = (s: Snap) => !s.answering && /GAME_(CHOOSE_CHOICE|CHOOSE_ABILITY|TARGET|ASK)/.test(s.prompt?.method ?? '') && !/discard/i.test(String(s.prompt?.data.message))
   for (;;) {
     const s = await passUntil(table, watch, what, (x) => done(x) || asks(x), Math.max(1000, deadline - Date.now()))
     if (done(s)) return s
