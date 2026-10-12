@@ -92,3 +92,13 @@ export function stopServer(spec: ServerSpec): void {
   }
   rmSync(file)
 }
+
+/** Started by scripts/play-online.sh in the online test: normal rules, password, public tunnel */
+export const ONLINE_SERVER: ServerSpec = {
+  name: 'online',
+  port: 8092,
+  xmagePort: 17471,
+  runDir: path.join(ROOT, 'run-online'),
+  testMode: false,
+  password: 'tunnel-pass',
+}

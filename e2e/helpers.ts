@@ -56,13 +56,21 @@ export async function openSeat(
   browser: Browser,
   server: ServerSpec,
   name: string,
-  options: { baseURL?: string; viewport?: { width: number; height: number }; videoDir?: string; password?: string } = {},
+  options: {
+    baseURL?: string
+    viewport?: { width: number; height: number }
+    videoDir?: string
+    password?: string
+    /** runs before the first page load, e.g. to intercept the connection */
+    prepare?: (context: BrowserContext, name: string) => Promise<void>
+  } = {},
 ): Promise<Seat> {
   const viewport = options.viewport ?? { width: 1600, height: 900 }
   const context = await browser.newContext({
     viewport,
     recordVideo: options.videoDir ? { dir: options.videoDir, size: viewport } : undefined,
   })
+  await options.prepare?.(context, name)
   const page = await context.newPage()
   const problems: string[] = []
   page.on('pageerror', (e) => problems.push(`exception: ${e.message}`))
@@ -99,6 +107,7 @@ export interface StartOptions {
   viewport?: { width: number; height: number }
   videoDir?: string
   baseURL?: string
+  prepare?: (context: BrowserContext, name: string) => Promise<void>
 }
 
 /**
@@ -230,7 +239,8 @@ export async function clickVisible(seat: Seat, target: Locator) {
   const deadline = Date.now() + 10_000
   for (;;) {
     const point = await target.evaluate((el) => {
-      const r = el.getBoundingClientRect()
+      // a tapped card is drawn turned sideways, which reaches outside its own box
+      const r = (el.querySelector('.card-body') ?? el).getBoundingClientRect()
       for (const fy of [0.5, 0.3, 0.7, 0.15, 0.85]) {
         for (let x = r.left + 3; x < r.right - 2; x += 4) {
           const y = r.top + r.height * fy

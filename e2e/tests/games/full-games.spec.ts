@@ -29,6 +29,7 @@ for (const [first, second] of MATCHUPS) {
 
     // a real finish: somebody actually lost the game, nobody conceded or was timed out by the server
     const log = logText(await snap(table.a))
+    console.log('  how it ended:\n    ' + log.split('\n').filter((l) => l.trim()).slice(-7).join('\n    '))
     expect(log).not.toMatch(/timed out|conceded|has left/i)
     expect(log).toMatch(/has lost the game|has won the game/i)
 

@@ -99,6 +99,8 @@ public final class GatewayMain {
         JsonElement cmdElement = msg.get("cmd");
         String cmd = cmdElement == null || cmdElement.isJsonNull() ? "" : cmdElement.getAsString();
         if (cmd.equals("keepalive")) {
+            // lets the browser notice a dead connection (tunnels and wifi can drop it without closing it)
+            ctx.send("{\"type\":\"pong\"}");
             return;
         }
 

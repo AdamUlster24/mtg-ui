@@ -23,12 +23,23 @@ export class Connection {
     const protocol = location.protocol === 'https:' ? 'wss' : 'ws'
     const ws = new WebSocket(`${protocol}://${location.host}/ws`)
     this.ws = ws
+    let lastHeard = Date.now()
     ws.onopen = () => {
       this.retry = 0
-      this.keepalive = window.setInterval(() => ws.send('{"cmd":"keepalive"}'), 30_000)
+      lastHeard = Date.now()
+      this.keepalive = window.setInterval(() => {
+        // a connection can die without telling anyone (sleeping laptop, wifi change, tunnel hiccup):
+        // the gateway answers every keepalive, so silence means it is gone
+        if (Date.now() - lastHeard > 25_000) {
+          ws.close()
+          return
+        }
+        if (ws.readyState === WebSocket.OPEN) ws.send('{"cmd":"keepalive"}')
+      }, 8_000)
       this.onOpen()
     }
     ws.onmessage = (e) => {
+      lastHeard = Date.now()
       const msg = JSON.parse(e.data)
       if (msg.type === 'reply') {
         const p = this.pending.get(msg.id)

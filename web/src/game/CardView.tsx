@@ -21,7 +21,7 @@ function TextFace({ card }: { card: Card }) {
   return (
     <div className={`face text-face frame-${frameClass(card)}`}>
       <div className="tf-title">
-        <span>{card.displayName || card.name}</span>
+        <span>{(card.isAbility && card.sourceCard?.name) || card.displayName || card.name}</span>
         <ManaCost cost={card.manaCost} />
       </div>
       <div className="tf-type">{card.isAbility ? 'Ability' : card.typeLine || card.commandKind}</div>
