@@ -398,6 +398,10 @@ export async function passUntil(table: Table, watch: Seat, what: string, done: (
       if (s.prompt.method === 'GAME_SELECT') {
         await seat.page.locator('.prompt-buttons .primary').click()
         await until(seat, 'the pass to register', (x) => x.prompt?.messageId !== s.prompt!.messageId).catch(() => {})
+      } else if (s.prompt.method === 'GAME_TARGET' && /discard/i.test(String(s.prompt.data.message))) {
+        // end of turn with more than seven cards: not what any test is about
+        await clickVisible(seat, seat.page.locator('.hand .card.mark-target').first())
+        await until(seat, 'the discard to register', (x) => x.prompt?.messageId !== s.prompt!.messageId).catch(() => {})
       } else if (s.prompt.method !== 'GAME_UPDATE_AND_INFORM') {
         throw new Error(`${seat.name}: unexpected prompt while passing: ${s.prompt.method} "${s.prompt.data.message}"`)
       }
@@ -405,6 +409,34 @@ export async function passUntil(table: Table, watch: Seat, what: string, done: (
     await sleep(60)
   }
   throw new Error(`timed out passing until ${what}`)
+}
+
+/**
+ * Like passUntil, but also answers the small questions an effect asks on the way
+ * (which dungeon, scry, "search for a basic land"): first option, first legal card, or "Done".
+ */
+export async function resolveUntil(table: Table, watch: Seat, what: string, done: (s: Snap) => unknown, timeout = 40_000) {
+  const deadline = Date.now() + timeout
+  const asks = (s: Snap) => /GAME_(CHOOSE_CHOICE|CHOOSE_ABILITY|TARGET|ASK)/.test(s.prompt?.method ?? '') && !/discard/i.test(String(s.prompt?.data.message))
+  for (;;) {
+    const s = await passUntil(table, watch, what, (x) => done(x) || asks(x), Math.max(1000, deadline - Date.now()))
+    if (done(s)) return s
+    const before = s
+    const page = watch.page
+    if (s.prompt!.method === 'GAME_ASK') {
+      await page.locator('.prompt-buttons .primary').click()
+    } else if (s.prompt!.method === 'GAME_TARGET') {
+      const pickable = page.locator('.modal .card-grid .card:not(.dimmed)')
+      const finished = page.locator('.modal footer .btn:not(.ghost)')
+      if ((await finished.count()) > 0) await finished.first().click()
+      else if ((await pickable.count()) > 0) await pickable.first().click()
+      else await clickVisible(watch, page.locator('.game .mark-target').first())
+    } else {
+      await page.locator('.modal .option-list button').first().click()
+    }
+    await until(watch, 'the answer to register', (x) => x.prompt?.messageId !== before.prompt!.messageId || !!done(x)).catch(() => {})
+    if (Date.now() > deadline) throw new Error(`timed out resolving until ${what}`)
+  }
 }
 
 // ---------------------------------------------------------------- test mode

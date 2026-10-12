@@ -360,8 +360,8 @@ final class ViewMapper {
         o.add("icons", icons);
         // printed values, to show what an effect changed
         if (c.getOriginalPower() != null && c.getOriginalToughness() != null) {
-            o.addProperty("basePower", c.getOriginalPower().getModifiedBaseValue());
-            o.addProperty("baseToughness", c.getOriginalToughness().getModifiedBaseValue());
+            o.addProperty("basePower", c.getOriginalPower().getBaseValue());
+            o.addProperty("baseToughness", c.getOriginalToughness().getBaseValue());
         }
         o.addProperty("colorIdentity", c.getOriginalColorIdentity());
         o.addProperty("originalIsCopy", c.isOriginalACopy());
