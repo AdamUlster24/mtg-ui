@@ -65,6 +65,7 @@ test('two triggers at once: the player orders them', async ({ browser }) => {
     // each trigger is shown with its source's art and its text, never "Ability deals..."
     expect(JSON.stringify(s.prompt.data.cards1.map((c: any) => c.rules))).not.toContain('Ability deals')
     await expect(a.page.locator('.modal .card-grid .card .ability-strip')).toHaveCount(2)
+    await expect(a.page.locator('.modal .card-grid .card.dimmed')).toHaveCount(0)
     await expect(a.page.locator('.modal .card-grid .card')).toHaveCount(2)
     await a.page.locator('.modal .card-grid .card').first().click()
     s = await passUntil(table, a, 'both triggers to resolve', (x) => me(x).life === 41 && opponent(x).life === 39)

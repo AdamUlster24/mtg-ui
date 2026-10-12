@@ -26,14 +26,19 @@ export function Modal({ title, children, onClose, wide }: { title: string; child
 export function CardGrid({ cards, onPick }: { cards: Card[]; onPick?: (card: Card) => void }) {
   const { mark } = useInteraction()
   if (cards.length === 0) return <p className="muted">Empty</p>
+  // when picking (e.g. a land out of a whole library), what can be picked comes first;
+  // prompts that don't say which cards are legal (ordering triggers) allow all of them
+  const anyMarked = cards.some((card) => mark(card.id, card))
+  const pickable = (card: Card) => !onPick || !anyMarked || !!mark(card.id, card)
+  const ordered = onPick ? [...cards.filter(pickable), ...cards.filter((c) => !pickable(c))] : cards
   return (
     <div className="card-grid">
-      {cards.map((card) => (
+      {ordered.map((card) => (
         <CardView
           key={card.id}
           card={card}
           shared={false}
-          className={onPick && !mark(card.id, card) ? 'dimmed' : ''}
+          className={pickable(card) ? '' : 'dimmed'}
           onClick={onPick ? () => onPick(card) : undefined}
         />
       ))}

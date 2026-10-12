@@ -224,6 +224,7 @@ export function card(seat: Seat, name: string, zone: Zone = 'any'): Locator {
  */
 export async function clickVisible(seat: Seat, target: Locator) {
   await target.waitFor({ state: 'visible' })
+  await target.scrollIntoViewIfNeeded()
   // a hand card under the pointer is raised over its neighbours: start from a neutral spot
   await seat.page.mouse.move(4, 4)
   const deadline = Date.now() + 10_000
