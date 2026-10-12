@@ -247,25 +247,38 @@ export async function clickVisible(seat: Seat, target: Locator) {
   // a hand card under the pointer is raised over its neighbours: start from a neutral spot
   await seat.page.mouse.move(4, 4)
   const deadline = Date.now() + 10_000
+  let last = ''
   for (;;) {
-    const point = await target.evaluate((el) => {
+    const found = await target.evaluate((el) => {
       // a tapped card is drawn turned sideways, which reaches outside its own box
       const r = (el.querySelector('.card-body') ?? el).getBoundingClientRect()
+      const box = [r.left, r.top, r.width, r.height].map((n) => Math.round(n)).join(',')
       for (const fy of [0.5, 0.3, 0.7, 0.15, 0.85]) {
-        for (let x = r.left + 3; x < r.right - 2; x += 4) {
-          const y = r.top + r.height * fy
+        const y = r.top + r.height * fy
+        // the widest uncovered stretch of this line, and its middle (never the very edge)
+        let best: { from: number; to: number } | null = null
+        let run: { from: number; to: number } | null = null
+        for (let x = r.left + 2; x < r.right - 1; x += 3) {
           const hit = document.elementFromPoint(x, y)
-          if (hit && el.contains(hit)) return { x, y }
+          if (hit && el.contains(hit)) {
+            run = run ? { from: run.from, to: x } : { from: x, to: x }
+            if (!best || run.to - run.from > best.to - best.from) best = run
+          } else {
+            run = null
+          }
         }
+        if (best && best.to - best.from >= 6) return { box, x: (best.from + best.to) / 2, y }
       }
-      return null
+      return { box, x: -1, y: -1 }
     })
-    if (point) {
-      await seat.page.mouse.click(point.x, point.y)
+    // cards slide around after every change: only click once the card has come to rest
+    if (found.x >= 0 && found.box === last) {
+      await seat.page.mouse.click(found.x, found.y)
       return
     }
+    last = found.box
     if (Date.now() > deadline) throw new Error(`${seat.name}: no visible spot to click on ${target}`)
-    await sleep(100)
+    await sleep(120)
   }
 }
 
@@ -327,7 +340,11 @@ export async function payMana(seat: Seat) {
 /** Casts a card from hand and pays for it; targets and other choices are up to the caller */
 export async function cast(seat: Seat, name: string, zone: Zone = 'hand') {
   await clickCard(seat, name, zone)
-  return payMana(seat)
+  const paid = await payMana(seat)
+  // say so right here if the click did something else than casting this card
+  return until(seat, `${name} on the stack`, (s) => (s.game.stack.some((c: any) => c.name === name) ? s : false), 10_000).catch((e) => {
+    throw new Error(`${e.message}; after paying the prompt was ${paid.prompt?.method}`)
+  })
 }
 
 /** Passes priority once */
