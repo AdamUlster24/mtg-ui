@@ -150,12 +150,12 @@ export function Lobby() {
                   {n}
                 </div>
               ))}
-              {check.errors.slice(0, 8).map((e) => (
+              {check.errors.slice(0, 20).map((e) => (
                 <div key={e} className="deck-error">
                   {e}
                 </div>
               ))}
-              {check.errors.length > 8 && <div className="deck-error">…and {check.errors.length - 8} more</div>}
+              {check.errors.length > 20 && <div className="deck-error">…and {check.errors.length - 20} more</div>}
             </div>
           )}
         </section>

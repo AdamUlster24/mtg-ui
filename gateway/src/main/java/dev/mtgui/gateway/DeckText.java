@@ -128,9 +128,14 @@ final class DeckText {
             if (info == null) {
                 // printed under another name (Universes Beyond and Secret Lair reskins): XMage knows the original
                 String real = realName(name);
-                info = real == null ? null : find(real, null, null);
+                boolean renamed = real != null && !normalize(real).equals(normalize(name));
+                info = renamed ? find(real, null, null) : null;
                 if (info != null) {
                     result.notes.add(name + " is " + info.getName());
+                } else if (real != null) {
+                    // a real card that XMage has no rules for (usually from a recent set)
+                    result.errors.add("Not in XMage yet: " + real);
+                    continue;
                 }
             }
             if (info == null) {
@@ -196,7 +201,7 @@ final class DeckText {
     private static final Map<String, String> REAL_NAMES = new ConcurrentHashMap<>();
     private static final HttpClient HTTP = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
 
-    /** Asks Scryfall which card is printed under this name; null when it knows none or can't be reached */
+    /** Asks Scryfall for the card with this name, also when it is only printed on it as another name; null when it knows none or can't be reached */
     private static String realName(String name) {
         String found = REAL_NAMES.computeIfAbsent(normalize(name), key -> {
             try {
@@ -210,8 +215,7 @@ final class DeckText {
                     return "";
                 }
                 JsonObject card = JsonParser.parseString(response.body()).getAsJsonObject();
-                String real = card.has("name") ? card.get("name").getAsString() : "";
-                return normalize(real).equals(key) ? "" : real;
+                return card.has("name") ? card.get("name").getAsString() : "";
             } catch (Exception e) {
                 if (e instanceof InterruptedException) {
                     Thread.currentThread().interrupt();

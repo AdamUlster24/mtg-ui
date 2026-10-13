@@ -46,6 +46,10 @@ test('a list with reskinned card names and the commander set apart on the last l
   for (const note of ["Aang's Shelter is Teferi's Protection", 'Joo Dee, Public Servant is Sakashima of a Thousand Faces', "Lifelong Friendship is Eladamri's Call", 'The Banyan Tree is The Great Henge']) {
     await expect(status).toContainText(note)
   }
+  // a real card XMage has no rules for is told apart from a name nobody knows
+  await page.locator('.lobby textarea').fill(list + '\n1 Galactus, Devourer of Worlds\n1 Definitely Not A Card')
+  await expect(status).toContainText('Not in XMage yet: Galactus, Devourer of Worlds')
+  await expect(status).toContainText('Unknown card: Definitely Not A Card')
   expect(seat.problems).toEqual([])
   await seat.context.close()
 })
