@@ -33,3 +33,19 @@ test('the lobby explains what is wrong with a deck', async ({ browser }) => {
   expect(seat.problems).toEqual([])
   await seat.context.close()
 })
+
+test('a list with reskinned card names and the commander set apart on the last line is understood', async ({ browser }) => {
+  const seat = await openSeat(browser, PLAY_SERVER, uniqueName('eve'))
+  const { page } = seat
+  // an MTGO-style export: no headings, the commander after a blank line; four cards go by their Avatar names
+  const list = ["1 Aang's Shelter", '1 Joo Dee, Public Servant', '1 Lifelong Friendship', '1 The Banyan Tree', '1 Sol Ring', '3 Forest', '2 Island', '', '1 Avatar Aang'].join('\n')
+  await page.locator('.lobby textarea').fill(list)
+  const status = page.locator('.deck-status')
+  await expect(status).toContainText('10 cards · Commander: Avatar Aang', { timeout: 30_000 })
+  await expect(status).toHaveClass(/good/)
+  for (const note of ["Aang's Shelter is Teferi's Protection", 'Joo Dee, Public Servant is Sakashima of a Thousand Faces', "Lifelong Friendship is Eladamri's Call", 'The Banyan Tree is The Great Henge']) {
+    await expect(status).toContainText(note)
+  }
+  expect(seat.problems).toEqual([])
+  await seat.context.close()
+})

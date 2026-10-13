@@ -7,7 +7,7 @@ user setting, every menu entry, hotkey, dialog and behaviour of the Swing client
 control of the web client's own settings panel and table options. Each is
 either **done**, with the Playwright test that proves it, or **out of scope** for one of: sound, drafts, sealed, tournaments, more than two players, replays, spectating, deck editor.
 
-589 items: 555 done, 34 out of scope.
+619 items: 585 done, 34 out of scope.
 
 ## View: GameView
 
@@ -772,6 +772,36 @@ either **done**, with the Playwright test that proves it, or **out of scope** fo
 
 | Item | Status | Test / reason |
 |---|---|---|
+| `setting yourTurn.upkeep` | done | `e2e/tests/scenarios/settings.spec.ts` › stop steps: every step can be switched on and off for my turn and for the opponent's |
+| `setting yourTurn.draw` | done | `e2e/tests/scenarios/settings.spec.ts` › stop steps: every step can be switched on and off for my turn and for the opponent's |
+| `setting yourTurn.main1` | done | `e2e/tests/scenarios/settings.spec.ts` › stop steps: every step can be switched on and off for my turn and for the opponent's |
+| `setting yourTurn.beforeCombat` | done | `e2e/tests/scenarios/settings.spec.ts` › stop steps: every step can be switched on and off for my turn and for the opponent's |
+| `setting yourTurn.endOfCombat` | done | `e2e/tests/scenarios/settings.spec.ts` › stop steps: every step can be switched on and off for my turn and for the opponent's |
+| `setting yourTurn.main2` | done | `e2e/tests/scenarios/settings.spec.ts` › stop steps: every step can be switched on and off for my turn and for the opponent's |
+| `setting yourTurn.endOfTurn` | done | `e2e/tests/scenarios/settings.spec.ts` › stop steps: every step can be switched on and off for my turn and for the opponent's |
+| `setting opponentTurn.upkeep` | done | `e2e/tests/scenarios/settings.spec.ts` › stop steps: every step can be switched on and off for my turn and for the opponent's |
+| `setting opponentTurn.draw` | done | `e2e/tests/scenarios/settings.spec.ts` › stop steps: every step can be switched on and off for my turn and for the opponent's |
+| `setting opponentTurn.main1` | done | `e2e/tests/scenarios/settings.spec.ts` › stop steps: every step can be switched on and off for my turn and for the opponent's |
+| `setting opponentTurn.beforeCombat` | done | `e2e/tests/scenarios/settings.spec.ts` › stop steps: every step can be switched on and off for my turn and for the opponent's |
+| `setting opponentTurn.endOfCombat` | done | `e2e/tests/scenarios/settings.spec.ts` › stop steps: every step can be switched on and off for my turn and for the opponent's |
+| `setting opponentTurn.main2` | done | `e2e/tests/scenarios/settings.spec.ts` › stop steps: every step can be switched on and off for my turn and for the opponent's |
+| `setting opponentTurn.endOfTurn` | done | `e2e/tests/scenarios/settings.spec.ts` › stop steps: every step can be switched on and off for my turn and for the opponent's |
+| `setting stopOnDeclareAttackers` | done | `e2e/tests/scenarios/settings.spec.ts` › stop to declare attackers while passing, or not |
+| `setting stopOnDeclareBlockersWithAnyPermanents` | done | `e2e/tests/scenarios/settings.spec.ts` › while passing: stop when attacked, with possible blockers and even without any |
+| `setting stopOnDeclareBlockersWithZeroPermanents` | done | `e2e/tests/scenarios/settings.spec.ts` › while passing: stop when attacked, with possible blockers and even without any |
+| `setting stopOnAllMainPhases` | done | `e2e/tests/scenarios/more.spec.ts` › F7 and F5: stopping in the opponent's main phases and at my own end step |
+| `setting stopOnAllEndPhases` | done | `e2e/tests/scenarios/more.spec.ts` › F7 and F5: stopping in the opponent's main phases and at my own end step |
+| `setting stopOnStackNewObjects` | done | `e2e/tests/scenarios/more.spec.ts` › F10: passing until the stack resolves stops for something new, or not |
+| `setting manaPoolAutomatic` | done | `e2e/tests/scenarios/prompts.spec.ts` › ability picker and paying from the mana pool — switched off: the pool is spent by clicking it |
+| `setting manaPoolAutomaticRestricted` | done | `e2e/tests/scenarios/more.spec.ts` › mana that was already in the pool: spent by hand, or automatically |
+| `setting useFirstManaAbility` | done | `e2e/tests/scenarios/settings.spec.ts` › tapping a land with several mana abilities: asks, or uses the first |
+| `setting confirmEmptyManaPool` | done | `e2e/tests/scenarios/settings.spec.ts` › ask before passing with mana in the pool |
+| `setting passPriorityCast` | done | `e2e/tests/scenarios/controls.spec.ts` › pass priority after casting, unless holding priority |
+| `setting passPriorityActivation` | done | `e2e/tests/scenarios/controls.spec.ts` › pass priority after activating an ability |
+| `setting autoOrderTrigger` | done | `e2e/tests/scenarios/more.spec.ts` › identical triggers: ordered automatically, or asked |
+| `setting askMoveToGraveOrder` | done | `e2e/tests/scenarios/settings.spec.ts` › graveyard order: asked when several cards go there at once, if wanted |
+| `setting useSameSettingsForReplacementEffects` | done | `e2e/tests/scenarios/more.spec.ts` › replacement effects: a remembered choice, for one object or for every copy |
+| `setting allowRequestShowHandCards` | done | `e2e/tests/scenarios/match.spec.ts` › asking to see the opponent's hand: refused by default, shown when they allow it |
 | `setting autoOrderTrigger` | done | `e2e/tests/scenarios/more.spec.ts` › identical triggers: ordered automatically, or asked |
 | `setting autoTargetLevel` | done | `e2e/tests/scenarios/settings.spec.ts` › automatic targeting level |
 | `setting showLog` | done | `e2e/tests/scenarios/settings.spec.ts` › this screen: card size, animations and the log |

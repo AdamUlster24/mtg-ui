@@ -245,6 +245,11 @@ select:focus {
   font-size: 0.82rem;
 }
 
+.deck-note {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
 .field {
   display: grid;
   gap: 0.3rem;

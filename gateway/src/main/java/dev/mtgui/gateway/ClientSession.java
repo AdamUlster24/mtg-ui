@@ -378,6 +378,9 @@ final class ClientSession implements MageClient {
         JsonArray errors = new JsonArray();
         result.errors.forEach(errors::add);
         o.add("errors", errors);
+        JsonArray notes = new JsonArray();
+        result.notes.forEach(notes::add);
+        o.add("notes", notes);
         return o;
     }
 

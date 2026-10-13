@@ -31,6 +31,11 @@ Open http://localhost:8080 in two tabs to play against yourself (each tab is its
 Commander decklist (Moxfield, Archidekt, MTGA or plain `1 Card Name` lines, with the commander under a
 `Commander` heading), create a table in one tab, join it from the other, start.
 
+A list without headings works too when the commander is set apart by a blank line at the end, as MTGO-style
+exports do. Cards printed under another name (Universes Beyond and Secret Lair reskins, such as "Aang's
+Shelter" for Teferi's Protection) are looked up on Scryfall and played as the original card; the lobby says
+which ones it replaced.
+
 ### With a friend over the internet
 
 ```bash
