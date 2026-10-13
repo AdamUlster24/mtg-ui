@@ -276,6 +276,7 @@ const RULES = [
   [/^control\.setting autoTargetLevel$/, done(T.autoTarget)],
   [/^control\.setting showLog$/, done(T.screen)],
   [/^control\.this screen /, done(T.screen)],
+  [/^control\.reset remembered$/, done(T.autoAnswer, 'the three resets behind one button for players; the test covers the actions, not this button')],
   [/^control\.reset answers$/, done(T.autoAnswer)],
   [/^control\.reset triggers$/, done(T.triggerMemory)],
   [/^control\.reset replacement$/, done(T.replacement)],

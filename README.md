@@ -97,54 +97,35 @@ Only the host runs anything; the friend opens the link, enters the password and 
 
 ### Tables
 
-"Table options" in the lobby, for whoever creates the table:
-
-- **Deck rules:** Commander (banlist enforced), the other Commander variants XMage knows, or a regular
-  duel with any cards (60+ cards and a sideboard).
-- **Match:** single game or best of three. XMage has no sideboarding in Commander: the next game starts
-  right away. In a regular duel both players rearrange main deck and sideboard between games.
-- **Starting life**, **starting hand size**, **mulligan rule** (London, Vancouver, Paris, …) and
-  **free mulligans**.
-- **Time limit per player** (a chess clock, shown next to each name) and free seconds per priority.
-- **Rollbacks:** whether players may ask to roll back turns (the opponent has to agree).
-- **Planechase:** a shared plane card in the command zone and a planar die.
+Every table is a standard two-player Commander game: 40 life, seven cards, the normal mulligan, the
+Commander banlist, no clock, a single game. There is nothing to set up.
 
 ## Settings
 
-`Settings` in the lobby, `More ▾ → Settings and stops…` or a click on the phase bar in a game. They are
-kept in the browser and sent to XMage, which applies them at once, also to a running game.
+`Settings` in the lobby, `More ▾ → Settings and stops…` or a click on the phase bar in a game. Like MTG
+Arena, there is little to configure. The settings are kept in the browser and apply at once, also to a
+running game.
 
-**Stops** – where the game waits for you when the stack is empty:
+- **Stops** – a box for each step (upkeep, draw, first main, beginning of combat, end of combat, second
+  main, end step) for your turn and for the opponent's: where the game waits for you when the stack is
+  empty. Unticked steps pass by themselves. Default: both main phases on your turn, the end step on the
+  opponent's. Whenever a spell or ability is cast you get the chance to respond anyway.
+- **Order my triggers by itself when the order does not matter** – on by default.
+- **Card size** on the battlefield, **animation speed** (normal, fast, off) and whether the **log** is shown.
+- *Forget remembered answers* drops every "always yes / no", remembered trigger order and replacement
+  choice of the current game; *Back to defaults* resets the rest.
 
-- A box for each step (upkeep, draw, first main, beginning of combat, end of combat, second main, end
-  step) for your turn and for the opponent's turn. Unticked steps pass by themselves. Default: both main
-  phases on your turn and on the opponent's.
-- *Stop to declare attackers while passing* – `F4` / `F5` / `F7` still stop when you could attack.
-- *Stop to declare blockers when I have possible blockers* / *even when I have none* – while a pass mode
-  is on.
-- *F7 also stops in the opponent's main phases* – off: only in your own.
-- *F5 also stops at my own end step* – off: only at the opponent's.
-- *F10 stops when something new goes on the stack* – on your turn, so you can respond.
+How the game behaves otherwise is fixed:
 
-**Playing**:
+- After you cast a spell or activate an ability, priority passes by itself. Hold `Ctrl` (or click "Hold
+  priority") to keep it and respond to your own spell.
+- Mana in your pool is spent automatically, except mana that was there before you started casting.
+- A land with several mana abilities asks which one; you are asked before passing with mana in your pool.
+- A target is chosen for you only when there is exactly one legal target.
 
-- *Spend mana from my pool automatically*, and *do not spend mana automatically that was in my pool
-  before I started casting* (then you click the pool to use it).
-- *Tapping a land uses its first mana ability* – no question for lands with several.
-- *Ask before passing with mana left in my pool.*
-- *Pass priority right after I cast a spell* / *after I activate an ability* (`Ctrl` or "Hold priority"
-  keeps it for once).
-- *Order my triggers by itself when the order does not matter.*
-- *Ask for the order when several cards go to my graveyard.*
-- *A remembered choice between replacement effects counts for every copy of the card* – off: only for
-  that object. (The choice dialog has a "remember" box.)
-- *Let the opponent ask to see my hand.*
-- *Automatic targeting:* never, when there is only one legal target, or also when all targets are the same.
-- *Remembered answers:* "Always yes / no" on a question, "always first / last" on a trigger and remembered
-  replacement choices last for the game; three buttons forget them.
-
-**This screen** (this browser only): card size on the battlefield, animation speed (normal, fast, off)
-and whether the log is shown.
+XMage has more switches (pass-mode fine-tuning, table variants such as other starting life totals, a chess
+clock, Planechase, best of three). The client supports them, but shows them only when the server runs in
+test mode (`XMAGE_TEST_MODE=true`), where the tests use them; a normal server ignores them.
 
 ## Tests
 

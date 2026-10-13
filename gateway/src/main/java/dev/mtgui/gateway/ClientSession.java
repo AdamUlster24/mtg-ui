@@ -186,13 +186,13 @@ final class ClientSession implements MageClient {
         }
         if (cmd.equals("login")) {
             if (msg.has("settings") && msg.get("settings").isJsonObject()) {
-                settings = msg.getAsJsonObject("settings");
+                settings = allowed(msg.getAsJsonObject("settings"));
             }
             return login(string(msg, "username"));
         }
         if (cmd.equals("settings")) {
             // XMage applies these on the server: stop steps, auto-payment, auto-targeting, ...
-            settings = msg.has("settings") && msg.get("settings").isJsonObject() ? msg.getAsJsonObject("settings") : null;
+            settings = msg.has("settings") && msg.get("settings").isJsonObject() ? allowed(msg.getAsJsonObject("settings")) : null;
             if (session.isConnected() && !session.updatePreferencesForServer(Settings.fromJson(settings))) {
                 throw new GatewayException("The server did not accept the settings" + lastError());
             }
@@ -339,6 +339,11 @@ final class ClientSession implements MageClient {
             });
         }
         return o;
+    }
+
+    /** Outside test mode only the stop steps and trigger ordering are the player's to set; the rest keeps its default */
+    private JsonObject allowed(JsonObject wanted) {
+        return config.testMode ? wanted : Settings.playerChoices(wanted);
     }
 
     private JsonElement tables() throws Exception {

@@ -17,8 +17,33 @@ final class Settings {
     }
 
     /** XMage's defaults, in the shape the browser edits */
+    /**
+     * XMage's defaults, except where MTG Arena's behaviour is the better starting point:
+     * a spell or ability passes priority by itself (Ctrl holds it), and on the opponent's turn
+     * the game waits at the end step rather than in both main phases.
+     */
     static JsonObject defaults() {
-        return toJson(UserData.getDefaultUserDataView());
+        JsonObject o = toJson(UserData.getDefaultUserDataView());
+        o.addProperty("passPriorityCast", true);
+        o.addProperty("passPriorityActivation", true);
+        JsonObject theirs = o.getAsJsonObject("opponentTurn");
+        theirs.addProperty("main1", false);
+        theirs.addProperty("main2", false);
+        theirs.addProperty("endOfTurn", true);
+        return o;
+    }
+
+    /** What a player may change outside test mode: where the game stops, and trigger ordering */
+    static JsonObject playerChoices(JsonObject json) {
+        JsonObject o = new JsonObject();
+        if (json != null) {
+            for (String key : new String[]{"yourTurn", "opponentTurn", "autoOrderTrigger"}) {
+                if (json.has(key)) {
+                    o.add(key, json.get(key));
+                }
+            }
+        }
+        return o;
     }
 
     static JsonObject toJson(UserData data) {
@@ -65,8 +90,10 @@ final class Settings {
         JsonObject d = defaults();
         JsonObject j = json == null ? new JsonObject() : json;
         UserSkipPrioritySteps stops = new UserSkipPrioritySteps();
-        readSteps(stops.getYourTurn(), j.getAsJsonObject("yourTurn"));
-        readSteps(stops.getOpponentTurn(), j.getAsJsonObject("opponentTurn"));
+        readSteps(stops.getYourTurn(), d.getAsJsonObject("yourTurn"));
+        readSteps(stops.getOpponentTurn(), d.getAsJsonObject("opponentTurn"));
+        readSteps(stops.getYourTurn(), j.has("yourTurn") && j.get("yourTurn").isJsonObject() ? j.getAsJsonObject("yourTurn") : null);
+        readSteps(stops.getOpponentTurn(), j.has("opponentTurn") && j.get("opponentTurn").isJsonObject() ? j.getAsJsonObject("opponentTurn") : null);
         stops.setStopOnDeclareAttackersDuringSkipActions(bool(j, d, "stopOnDeclareAttackers"));
         stops.setStopOnDeclareBlockersWithZeroPermanents(bool(j, d, "stopOnDeclareBlockersWithZeroPermanents"));
         stops.setStopOnDeclareBlockersWithAnyPermanents(bool(j, d, "stopOnDeclareBlockersWithAnyPermanents"));
