@@ -25,7 +25,7 @@ function Hand({ cards, playerId }: { cards: Card[]; playerId: string }) {
   const turn = Math.min(2.6, 14 / Math.max(1, cards.length))
   const fan = (i: number) => ({
     ['--rot' as string]: `${(i - mid) * turn}deg`,
-    ['--drop' as string]: `${mid ? ((i - mid) / mid) ** 2 * 12 : 0}px`,
+    ['--drop' as string]: `${mid ? ((i - mid) / mid) ** 2 * 6 : 0}px`,
   })
   const { click } = useInteraction()
   const setPreview = useStore((s) => s.setPreview)

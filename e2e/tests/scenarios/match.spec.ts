@@ -122,11 +122,16 @@ test('best of three in a regular duel: sideboarding between the games', async ({
 })
 
 test('table options: starting life, free mulligans and no rollbacks', async ({ browser }) => {
-  const table = await startGame(browser, { tableOptions: { startLife: 25, freeMulligans: 1, mulliganType: 'LONDON', rollbackTurnsAllowed: false } })
+  const table = await startGame(browser, { tableOptions: { startLife: 25, startHandSize: 5, freeMulligans: 1, mulliganType: 'LONDON', rollbackTurnsAllowed: false }, mulligans: 1 })
   const { a } = table
   const s = await snap(a)
   expect(s.game.players.map((p: any) => p.life)).toEqual([25, 25])
   await expect(a.page.locator('.player-panel.mine .life')).toHaveText('25')
+  // five-card opening hands (plus the first draw of whoever is not on the play)
+  expect(logText(s)).toMatch(/draws five cards/)
+  // A took one mulligan; it was free, so the new hand is five cards again and nothing went to the bottom
+  expect(logText(s)).toMatch(/mulligan/i)
+  expect(s.game.hand.length).toBe(5)
   expect(logText(s)).toMatch(/Mulligan type: London/)
   expect(logText(s)).toMatch(/Free mulligans: 1/)
   expect(s.game.rollbackTurnsAllowed).toBe(false)

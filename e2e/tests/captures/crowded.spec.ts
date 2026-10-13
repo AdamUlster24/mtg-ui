@@ -68,6 +68,7 @@ async function checkHand(page: Page, size: { width: number; height: number }, co
   const table = (await boxes(page, '.table'))[0]
   for (const [i, c] of cards.entries()) {
     if (c.x < table.x - 1 || c.x + c.w > table.x + table.w + 1) problems.push(`hand card ${i} leaves the table`)
+    if (c.y < -1 || c.y + c.h > size.height + 1) problems.push(`hand card ${i} leaves the screen (${Math.round(c.y)}..${Math.round(c.y + c.h)})`)
     if (panels.some((p) => overlap(c, p))) problems.push(`hand card ${i} covers the player panel or the prompt`)
   }
   for (const [i, strip] of (await visibleStrip(page, '.hand .card')).entries()) {

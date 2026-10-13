@@ -170,7 +170,8 @@ bundled browser instead). They start their own servers on other ports and stop t
 
 **[docs/parity.md](docs/parity.md)** lists everything XMage's network contract and the Swing client's
 game panel offer – every field of the view classes, every server callback, prompt option, player action
-and setting, every menu entry, hotkey and dialog – with the test that proves the web client handles it.
+and setting, every menu entry, hotkey and dialog, and every control of this client's settings panel and
+table options – with the test that proves the web client handles it.
 It is generated from the XMage sources by `scripts/parity.mjs`; with `--check` it fails when an item has
 no entry or names a test that does not exist, so an XMage update that adds something shows up there.
 
@@ -190,7 +191,8 @@ played to its end.
 side, the stack with 1, 5 and 12 items and the hand with 1, 7 and 15 cards. The tests that take them also
 measure the page: nothing scrolls, the table's sections don't overlap, no permanent leaves the table or
 covers a player panel, neighbouring slots don't cover each other, the stack never covers a panel or the
-prompt, and every card in a crowded stack or hand keeps a visible strip of its own.
+prompt, every stack item and hand card is entirely on screen, and every card in a crowded stack or hand
+keeps a visible strip of its own.
 
 `docs/captures/animations/` – frames and two recordings (`player-a.webm`, `player-b.webm`, one per side of
 the same game) of: drawing, casting, the opponent casting, damage on a creature, a spell resolving, a
@@ -200,7 +202,8 @@ creature dying, exile with life gain, a bounce to hand, an attack, and life loss
 out of the spell that makes them, counters going on and coming off, a hand being revealed, a discard, a
 mill, a countered spell, combat damage hitting a player, and the phase and the turn changing.
 
-Each of these tests asserts that the animation in question is actually running while it happens.
+Each of these tests asserts that the animation in question is actually running while it happens; the
+frames are taken at the moments the effect is on screen.
 
 ## How it works
 

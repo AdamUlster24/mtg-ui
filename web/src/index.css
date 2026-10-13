@@ -328,8 +328,9 @@ select:focus {
 
 .strip.bottom {
   align-items: flex-end;
-  height: calc(var(--hand-h) * 1.08);
-  padding-bottom: 0.7rem;
+  /* the whole hand is on screen, leaning outer cards included */
+  height: calc(var(--hand-h) + 1.7rem);
+  padding-bottom: 1.1rem;
 }
 
 .side {
@@ -992,7 +993,7 @@ select:focus {
   flex: 0 1 calc(var(--hcw) * 0.8);
   width: calc(var(--hcw) * 0.8);
   min-width: 0;
-  transform: translateY(calc(var(--drop) + 8%)) rotate(var(--rot));
+  transform: translateY(var(--drop)) rotate(var(--rot));
   transform-origin: 50% 100%;
   transition: transform 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.1);
 }
@@ -2106,7 +2107,7 @@ button.steps {
   position: absolute;
   left: 0.8rem;
   top: calc(var(--ch) * 0.75);
-  bottom: calc(var(--hand-h) * 1.15);
+  bottom: calc(var(--hand-h) + 2.1rem);
   width: min(30vw, 420px);
   display: flex;
   flex-direction: column;
@@ -2756,7 +2757,7 @@ table.stops th {
   /* between the two player strips, never over a panel or the prompt */
   top: calc(var(--ch) * 0.72);
   /* the prompt bar below it can be taller than the hand strip (long questions) */
-  --below: max(calc(var(--hand-h) * 1.14), 12.5rem);
+  --below: max(calc(var(--hand-h) + 2rem), 12.5rem);
   bottom: var(--below);
   transform: none;
   display: flex;

@@ -110,6 +110,8 @@ export interface StartOptions {
   prepare?: (context: BrowserContext, name: string) => Promise<void>
   /** what the host picks under "Table options": data-option name -> value */
   tableOptions?: Record<string, string | number | boolean>
+  /** how often player A mulligans before keeping */
+  mulligans?: number
 }
 
 /**
@@ -133,7 +135,7 @@ export async function startGame(browser: Browser, options: StartOptions = {}): P
   await expect(b.page.locator('.game')).toBeVisible({ timeout: 30_000 })
 
   const table = { a, b, seats: [a, b] }
-  await preGame(table)
+  await preGame(table, options.mulligans ?? 0)
   return table
 }
 
@@ -151,7 +153,7 @@ export async function setTableOptions(seat: Seat, options: Record<string, string
 }
 
 /** Starting player choice and mulligan questions */
-export async function preGame(table: Table) {
+export async function preGame(table: Table, mulligans = 0) {
   const { a } = table
   const deadline = Date.now() + 40_000
   while (Date.now() < deadline) {
@@ -165,7 +167,8 @@ export async function preGame(table: Table) {
         await seat.page.locator(`.life-orb[data-oid="${first.id}"]`).click()
         await promptChanged(seat, s)
       } else if (method === 'GAME_ASK' && /mulligan/i.test(message)) {
-        await seat.page.locator('.prompt-buttons button', { hasText: 'Keep' }).click()
+        const again = seat === a && mulligans-- > 0
+        await seat.page.locator('.prompt-buttons button', { hasText: again ? /^Mulligan/ : 'Keep' }).click()
         await promptChanged(seat, s)
       } else if (method === 'GAME_SELECT' && seat === a && s.game.step === 'PRECOMBAT_MAIN') {
         return

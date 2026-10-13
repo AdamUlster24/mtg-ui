@@ -31,8 +31,9 @@ const OUT = path.join(ROOT, 'docs', 'captures', 'events')
 async function filmed(page: Page, name: string, action: () => Promise<unknown>, frames = 7) {
   const seen = { animations: 0, effects: new Set<string>(), classes: new Set<string>() }
   let done = false
+  let saved = 0
   const watch = (async () => {
-    for (let i = 0; !done || i < frames; i++) {
+    for (let i = 0; !done; i++) {
       const now = await page.evaluate(() => ({
         running: document.getAnimations().filter((a) => a.playState === 'running' && (a.effect?.getTiming().iterations ?? 1) !== Infinity).length,
         effects: Array.from(document.querySelectorAll('[data-effect]')).map((e) => e.getAttribute('data-effect')!),
@@ -50,9 +51,11 @@ async function filmed(page: Page, name: string, action: () => Promise<unknown>, 
       now.effects.forEach((e) => seen.effects.add(e))
       now.piles.forEach((e) => seen.classes.add(e))
       now.marks.forEach((e) => seen.classes.add(e))
-      if (i < frames) await page.screenshot({ path: path.join(OUT, `${name}-${i}.jpg`), type: 'jpeg', quality: 70 })
+      // two frames of how it starts, the rest from the moments the effect itself is on screen
+      const showing = now.effects.length + now.piles.length + now.marks.length > 0
+      if (saved < frames && (saved < 2 || showing)) await page.screenshot({ path: path.join(OUT, `${name}-${saved++}.jpg`), type: 'jpeg', quality: 70 })
       else await page.waitForTimeout(40)
-      if (i > 200) break
+      if (i > 400) break
     }
   })()
   await action()
