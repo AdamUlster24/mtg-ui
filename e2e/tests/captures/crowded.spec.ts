@@ -89,6 +89,8 @@ for (const size of SIZES) {
       while (onStack < count) {
         const s = await snap(a)
         const next = s.game.hand.find((c: any) => c.name === 'Opt')
+        // keep priority after each spell, like holding Ctrl
+        await a.page.evaluate(() => (window as any).mtgui.store.getState().action('HOLD_PRIORITY'))
         await clickVisible(a, a.page.locator(`.hand [data-card-id="${next.id}"]`))
         await payMana(a)
         onStack++

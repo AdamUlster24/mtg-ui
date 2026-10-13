@@ -143,6 +143,8 @@ export async function startGame(browser: Browser, options: StartOptions = {}): P
 export async function setTableOptions(seat: Seat, options: Record<string, string | number | boolean>) {
   const all = { deckType: '', bestOf: 1, startLife: 40, startHandSize: 7, mulliganType: 'GAME_DEFAULT', freeMulligans: 0, timeLimit: 'NONE', bufferTime: 'NONE', rollbackTurnsAllowed: true, planeChase: false, ...options }
   const details = seat.page.locator('details.table-options')
+  // players get a standard Commander table; the options are there in test mode only
+  if (Object.keys(options).length === 0 && (await details.count()) === 0) return
   if (!(await details.evaluate((el) => (el as HTMLDetailsElement).open))) await details.locator('summary').click()
   for (const [name, value] of Object.entries(all)) {
     const field = seat.page.locator(`.lobby [data-option="${name}"]`)
@@ -645,6 +647,8 @@ export async function stopsSeen(table: Table, who: Seat, untilTurn: number, time
         // `attacker` sends everything into combat when asked, everybody else just passes
         const all = seat.page.locator('.prompt-buttons button', { hasText: 'All attack' })
         const button = seat === attacker && /attackers/i.test(message) && s.game.combat.length === 0 && (await all.count()) > 0 ? all : seat.page.locator('.prompt-buttons .primary')
+        // a pass mode may have answered this prompt already: never click the button of the next one by mistake
+        if ((await snap(seat)).prompt?.messageId !== s.prompt.messageId) continue
         const clicked = await button.first().click({ timeout: 2000 }).then(() => true, () => false)
         if (clicked) await until(seat, 'the pass to register', (x) => x.prompt?.messageId !== s.prompt!.messageId, 5000).catch(() => {})
       } else if (method === 'GAME_TARGET' && /discard/i.test(String(s.prompt.data.message))) {

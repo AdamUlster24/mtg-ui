@@ -70,6 +70,7 @@ test('stop to declare attackers while passing, or not', async ({ browser }) => {
 
   // default: F4 (pass until next turn) still stops when I could attack
   await a.page.keyboard.press('F4')
+  await until(a, 'the pass mode to start', (x) => x.game.step !== 'PRECOMBAT_MAIN' || /attackers/i.test(String(x.prompt?.data.message)))
   let seen = await stopsSeen(table, a, 2)
   expect(seen[1]).toContain('DECLARE_ATTACKERS')
 

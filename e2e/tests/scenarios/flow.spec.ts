@@ -27,8 +27,8 @@ test('responding on the stack: Counterspell', async ({ browser }) => {
   const { a, b } = table
   await cheat(a, [...lands(a, { Forest: 2 }), ...lands(b, { Island: 2 }), `hand:${a.name}:Grizzly Bears:1`, `hand:${b.name}:Counterspell:1`])
 
+  // casting passes priority: the opponent gets to respond right away
   await cast(a, 'Grizzly Bears')
-  await pass(a)
   await waitPrompt(b, 'GAME_SELECT')
   await expect(b.page.locator('.hand .card[data-name="Counterspell"]')).toHaveClass(/mark-playable/)
   let s = await clickCard(b, 'Counterspell', 'hand')

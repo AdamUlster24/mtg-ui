@@ -82,7 +82,7 @@ test('every zone change, life change, tap and attack is animated', async ({ brow
     await payMana(a)
     await during('cast', a.page)
   })
-  await pass(a)
+  // casting passes priority
 
   // the opponent answers from their hand: opponent's hand -> stack, then damage on my creature
   await waitPrompt(b, 'GAME_SELECT')

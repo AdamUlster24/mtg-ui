@@ -141,7 +141,7 @@ test('F10: passing until the stack resolves stops for something new, or not', as
   const round = async () => {
     await clickCard(a, 'Grizzly Bears', 'hand')
     await payMana(a)
-    await waitPrompt(a, 'GAME_SELECT')
+    await until(a, 'the spell on the stack', (x) => x.game.stack.length === 1)
     // I pass until my spell has resolved; the opponent answers with a spell of their own
     await a.page.keyboard.press('F10')
     await waitPrompt(b, 'GAME_SELECT')
@@ -218,8 +218,8 @@ test('mana that was already in the pool: spent by hand, or automatically', async
   await passUntil(table, a, 'priority', (x) => x.prompt?.method === 'GAME_SELECT' && x.game.stack.length === 0 && x.game.step === 'PRECOMBAT_MAIN').catch(() => {})
   await setSetting(a, 'manaPoolAutomaticRestricted', false)
   await float()
-  s = await clickCard(a, 'Savannah Lions', 'hand')
-  expect(s.prompt!.method).toBe('GAME_SELECT')
+  await clickCard(a, 'Savannah Lions', 'hand')
+  s = await until(a, 'the lions cast without a payment prompt', (x) => (x.game.stack.length === 1 && x.prompt?.method !== 'GAME_PLAY_MANA' ? x : false))
   expect(s.game.stack.map((c: any) => c.name)).toEqual(['Savannah Lions'])
   await finish(table)
 })

@@ -144,7 +144,7 @@ test('flip card flips and is drawn upside down (Budoka Gardener)', async ({ brow
     } else if (s.prompt!.method === 'GAME_ASK') {
       s = await settle(a)
     } else {
-      s = await passUntil(table, a, 'the flip', (x) => findPermanent(x, 'Dokai, Weaver of Life') || x.prompt?.method !== 'GAME_SELECT')
+      s = await passUntil(table, a, 'the flip', (x) => findPermanent(x, 'Dokai, Weaver of Life') || /GAME_(TARGET|ASK)/.test(x.prompt?.method ?? ''))
     }
   }
   const flipped = findPermanent(s, 'Dokai, Weaver of Life')

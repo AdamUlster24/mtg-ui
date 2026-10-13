@@ -161,7 +161,6 @@ test('discarding, milling, a countered spell and combat damage are animated', as
   await target(a, 'opponent')
   await payMana(a)
   const discard = await filmed(a.page, '08-discard', async () => {
-    await pass(a)
     // the opponent picks what to discard (two cards, then confirms)
     for (let i = 0; i < 10; i++) {
       if (opponent(await snap(a)).graveyard.length >= 2) break
@@ -192,7 +191,6 @@ test('discarding, milling, a countered spell and combat damage are animated', as
   // a spell is countered: crossed out on its way to the graveyard
   await passUntil(table, a, 'priority', (x) => x.prompt?.method === 'GAME_SELECT' && x.game.stack.length === 0)
   await cast(a, 'Air Elemental')
-  await pass(a)
   await waitPrompt(b, 'GAME_SELECT')
   await clickCard(b, 'Counterspell', 'hand')
   const sb = await settle(b)
