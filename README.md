@@ -4,6 +4,8 @@ A browser client for [XMage](https://github.com/magefree/mage), built for two pe
 online. XMage's server, rules engine and card implementations are used unmodified; this repo replaces only
 the Swing client.
 
+![A two-player Commander game in the browser: both battlefields, the hand, the phase bar, the prompt and the game log](docs/captures/layout/1600x900-15-permanents.jpg)
+
 ```
 Browser (React + TS)  <-- JSON / WebSocket -->  gateway (Java)  <-- XMage client protocol -->  XMage server
         web/                                      gateway/                                      ../mage
@@ -287,3 +289,16 @@ Left out on purpose; these are the "out of scope" rows of [docs/parity.md](docs/
 - replays
 - spectating
 - deck editor (decks are pasted as lists)
+
+## License and credits
+
+The code in this repository is released under the [MIT License](LICENSE).
+
+- **[XMage](https://github.com/magefree/mage)** (MIT) provides the server, the rules engine and every card
+  implementation. None of its code is copied here; the gateway is built against a separate checkout.
+- Card and token images are fetched from **[Scryfall](https://scryfall.com)** at runtime and cached locally.
+  They are not part of this repository, apart from the screenshots and recordings in `docs/captures`.
+
+mtg-ui is unofficial Fan Content permitted under the
+[Fan Content Policy](https://company.wizards.com/en/legal/fancontentpolicy). Not approved/endorsed by Wizards.
+Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC.
