@@ -5,9 +5,11 @@ import { speed } from './motion'
 
 interface Effect {
   key: number
-  kind: 'die' | 'coin' | 'turn' | 'countered'
+  kind: 'die' | 'coin' | 'turn' | 'countered' | 'opening'
   text: string
   detail?: string
+  /** the opening roll: what each player rolled, the winner first in neither order */
+  rolls?: { player: string; roll: string; won: boolean }[]
 }
 
 const strip = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
@@ -51,6 +53,9 @@ export function Effects({ game }: { game: GameView }) {
   const seen = useRef(log.at(-1)?.key ?? 0)
   const turn = useRef({ turn: game.turn, active: game.activePlayerId })
 
+  // dice wait a moment before they show: the two rolls that decide who starts are shown together instead
+  const dice = useRef<{ player: string; roll: string; timer: number }[]>([])
+
   const show = (effect: Omit<Effect, 'key'>, ms = 1900) => {
     const k = speed()
     if (k === 0) return
@@ -65,11 +70,28 @@ export function Effects({ game }: { game: GameView }) {
     // a reload replays the whole log: that is history, not something happening now
     if (fresh.length > 12) return
     for (const line of fresh) {
+      const starts = /^(.+?) rolled higher and takes the first turn/.exec(strip(line.message))
+      if (starts) {
+        // after a tie there are earlier rolls too: the last two decided it
+        dice.current.forEach((r) => window.clearTimeout(r.timer))
+        const rolls = dice.current.slice(-2)
+        dice.current = []
+        const mine = starts[1] === game.players.find((p) => p.id === game.myPlayerId)?.name
+        show({ kind: 'opening', text: mine ? 'You go first' : `${starts[1]} goes first`, rolls: rolls.map((r) => ({ player: r.player, roll: r.roll, won: r.player === starts[1] })) }, 4200)
+        continue
+      }
       const event = readLog(line)
       if (!event) continue
       if (event.kind === 'shuffle') pulsePile(game, event.player, 'shuffling')
       else if (event.kind === 'search') pulsePile(game, event.player, 'searching')
-      else show({ kind: event.kind, text: event.text, detail: event.detail })
+      else if (event.kind === 'die') {
+        const entry = { player: event.player ?? '', roll: event.text, timer: 0 }
+        entry.timer = window.setTimeout(() => {
+          dice.current = dice.current.filter((d) => d !== entry)
+          show({ kind: 'die', text: event.text, detail: event.detail })
+        }, 180)
+        dice.current.push(entry)
+      } else show({ kind: event.kind, text: event.text, detail: event.detail })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [log])
@@ -100,6 +122,19 @@ export function Effects({ game }: { game: GameView }) {
             </div>
           )}
           {e.kind === 'countered' && <div className="countered-mark">✕</div>}
+          {e.kind === 'opening' && (
+            <div className="opening-roll">
+              <div className="opening-dice">
+                {(e.rolls ?? []).map((r) => (
+                  <div key={r.player} className={`opening-player ${r.won ? 'won' : ''}`} data-roll={r.roll}>
+                    <div className="die">{r.roll}</div>
+                    <span>{r.player}</span>
+                  </div>
+                ))}
+              </div>
+              <b>{e.text}</b>
+            </div>
+          )}
           {e.kind !== 'turn' && e.detail && <div className="effect-detail">{e.detail}</div>}
         </div>
       ))}

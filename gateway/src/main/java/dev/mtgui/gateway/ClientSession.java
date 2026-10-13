@@ -25,6 +25,7 @@ import mage.players.PlayerType;
 import mage.remote.Connection;
 import mage.remote.SessionImpl;
 import mage.utils.MageVersion;
+import mage.view.PlayerView;
 import mage.view.*;
 import org.apache.log4j.Logger;
 
@@ -36,6 +37,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -79,8 +81,18 @@ final class ClientSession implements MageClient {
     // the player's XMage preferences, as the browser sent them
     private JsonObject settings;
 
+    // every live session of this gateway: both players of a game are told the same opening roll
+    private static final java.util.Set<ClientSession> LIVE = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    private static final java.security.SecureRandom DICE = new java.security.SecureRandom();
+    // log lines made up by the gateway that arrived before this session knew its game chat
+    private final List<String> pendingLog = new java.util.ArrayList<>();
+    // the opening rolls of recent games, for a player whose session hears of the game a moment later
+    private static final java.util.Map<String, List<String>> OPENING = new java.util.concurrent.ConcurrentHashMap<>();
+    private String openingShownFor;
+
     ClientSession(GatewayConfig config) {
         this.config = config;
+        LIVE.add(this);
     }
 
     // ------------------------------------------------------------ websocket side
@@ -106,6 +118,7 @@ final class ClientSession implements MageClient {
     }
 
     void close() {
+        LIVE.remove(this);
         commands.shutdownNow();
         try {
             session.connectStop(false, false);
@@ -653,7 +666,14 @@ final class ClientSession implements MageClient {
                         game.addProperty("chatId", id.toString());
                         session.joinChat(id);
                     });
+                    List<String> waiting;
+                    synchronized (this) {
+                        waiting = new java.util.ArrayList<>(pendingLog);
+                        pendingLog.clear();
+                    }
                     sendEvent(method.name(), objectId, messageId, game);
+                    waiting.forEach(this::gameLog);
+                    showOpening(gameId.toString());
                     session.joinGame(gameId);
                 });
                 break;
@@ -664,9 +684,16 @@ final class ClientSession implements MageClient {
                 gameEvent(method, objectId, messageId, wrapGame((GameView) data));
                 break;
 
+            case GAME_TARGET:
+                // XMage lets a randomly picked player name who starts; here both players roll a d20 instead
+                if (!config.testMode && openingRoll(objectId, (GameClientMessage) data)) {
+                    break;
+                }
+                gameEvent(method, objectId, messageId, ViewMapper.gameMessage((GameClientMessage) data));
+                break;
+
             case GAME_UPDATE_AND_INFORM:
             case GAME_ASK:
-            case GAME_TARGET:
             case GAME_SELECT:
             case GAME_CHOOSE_PILE:
             case GAME_CHOOSE_CHOICE:
@@ -701,6 +728,11 @@ final class ClientSession implements MageClient {
                 break;
 
             case CHATMESSAGE: {
+                String said = ((ChatMessage) data).getMessage();
+                if (!config.testMode && said != null && (said.contains(" won the toss") || said.contains(" take the first turn"))) {
+                    // replaced by the opening roll
+                    break;
+                }
                 String json = event(method.name(), objectId, messageId, ViewMapper.chat((ChatMessage) data));
                 synchronized (this) {
                     if (currentGame != null && objectId != null
@@ -770,6 +802,76 @@ final class ClientSession implements MageClient {
         JsonObject o = new JsonObject();
         o.add("game", ViewMapper.game(view));
         return o;
+    }
+
+    /**
+     * Answers XMage's "choose the starting player" question with a roll: each player rolls a d20
+     * (again on a tie) and the higher one takes the first turn. Both players get the rolls in their log.
+     */
+    private boolean openingRoll(UUID gameId, GameClientMessage message) {
+        if (message.getMessage() == null || !message.getMessage().toLowerCase(Locale.ENGLISH).contains("starting player")
+                || message.getGameView() == null || message.getGameView().getPlayers().size() != 2) {
+            return false;
+        }
+        PlayerView first = message.getGameView().getPlayers().get(0);
+        PlayerView second = message.getGameView().getPlayers().get(1);
+        List<String> lines = new java.util.ArrayList<>();
+        int a;
+        int b;
+        do {
+            a = DICE.nextInt(20) + 1;
+            b = DICE.nextInt(20) + 1;
+            lines.add("[Roll a die] " + first.getName() + " rolled a d20, result: " + a);
+            lines.add("[Roll a die] " + second.getName() + " rolled a d20, result: " + b);
+            if (a == b) {
+                lines.add("A tie: both roll again");
+            }
+        } while (a == b);
+        PlayerView winner = a > b ? first : second;
+        lines.add(winner.getName() + " rolled higher and takes the first turn");
+        if (OPENING.size() > 50) {
+            OPENING.clear();
+        }
+        OPENING.put(gameId.toString(), lines);
+        for (ClientSession other : LIVE) {
+            other.showOpening(gameId.toString());
+        }
+        commands.execute(() -> session.sendPlayerUUID(gameId, winner.getPlayerId()));
+        return true;
+    }
+
+    private void showOpening(String gameId) {
+        List<String> lines = OPENING.get(gameId);
+        synchronized (this) {
+            if (lines == null || gameId.equals(openingShownFor) || currentGame == null || !gameId.equals(stringOrNull(currentGame, "gameId"))) {
+                return;
+            }
+            openingShownFor = gameId;
+        }
+        lines.forEach(this::gameLog);
+    }
+
+    /** A line in the game log that comes from the gateway, not from XMage */
+    private void gameLog(String text) {
+        String json;
+        synchronized (this) {
+            String chatId = stringOrNull(currentGame, "chatId");
+            if (chatId == null) {
+                pendingLog.add(text);
+                return;
+            }
+            JsonObject o = new JsonObject();
+            o.addProperty("username", "");
+            o.addProperty("time", System.currentTimeMillis());
+            o.addProperty("turnInfo", "");
+            o.addProperty("message", text);
+            o.add("color", JsonNull.INSTANCE);
+            o.addProperty("messageType", "GAME");
+            o.add("sound", JsonNull.INSTANCE);
+            json = event("CHATMESSAGE", UUID.fromString(chatId), 0, o);
+            chatHistory.addLast(json);
+        }
+        sendRaw(json);
     }
 
     private void gameEvent(ClientCallbackMethod method, UUID gameId, int messageId, JsonObject data) {

@@ -2326,6 +2326,73 @@ button.steps {
   animation: die-roll 1.9s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
 
+.opening-roll {
+  display: grid;
+  justify-items: center;
+  gap: 1rem;
+  padding: 1.4rem 2.4rem 1.2rem;
+  border-radius: 1.2rem;
+  background: rgba(8, 11, 17, 0.88);
+  border: 1px solid var(--line);
+  animation: fade-through 4.2s ease-out forwards;
+}
+
+.opening-roll > b {
+  font: 700 1.5rem Cinzel, serif;
+  color: #f2c868;
+  letter-spacing: 0.04em;
+}
+
+.opening-dice {
+  display: flex;
+  gap: 3.5rem;
+}
+
+.opening-player {
+  display: grid;
+  justify-items: center;
+  gap: 0.6rem;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+.opening-player .die {
+  animation: opening-die 1.1s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.opening-player:last-child .die {
+  animation-delay: 0.15s;
+}
+
+.opening-player.won {
+  color: #fff;
+}
+
+.opening-player.won .die {
+  box-shadow:
+    inset 0 -6px 12px rgba(0, 0, 0, 0.25),
+    0 0 0 3px #f2c868,
+    0 0 34px rgba(242, 200, 104, 0.7);
+}
+
+.opening-player:not(.won) .die {
+  filter: saturate(0.5) brightness(0.8);
+}
+
+@keyframes opening-die {
+  0% {
+    transform: translateY(-9rem) rotate(-540deg) scale(0.5);
+    opacity: 0;
+  }
+  70% {
+    transform: translateY(0) rotate(14deg) scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(0) scale(1);
+  }
+}
+
 @keyframes die-roll {
   0% {
     transform: translate(-40vw, -20vh) rotate(-720deg) scale(0.4);

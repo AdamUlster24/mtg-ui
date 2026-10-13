@@ -107,6 +107,10 @@ Only the host runs anything; the friend opens the link, enters the password and 
 Every table is a standard two-player Commander game: 40 life, seven cards, the normal mulligan, the
 Commander banlist, no clock, a single game. There is nothing to set up.
 
+Who starts is decided by a roll: each player rolls a d20 (again on a tie) and the higher roll takes the
+first turn. Both rolls are shown and stay in the log. (XMage itself picks a player at random and lets that
+player choose; the gateway answers that question with the roll. In test mode the choice is left open.)
+
 ## Settings
 
 `Settings` in the lobby, `More ▾ → Settings and stops…` or a click on the phase bar in a game. Like MTG
