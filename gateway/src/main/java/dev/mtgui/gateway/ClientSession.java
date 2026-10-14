@@ -430,6 +430,8 @@ final class ClientSession implements MageClient {
         options.setSkillLevel(SkillLevel.CASUAL);
         options.setRollbackTurnsAllowed(!msg.has("rollbackTurnsAllowed") || msg.get("rollbackTurnsAllowed").getAsBoolean());
         options.setSpectatorsAllowed(true);
+        // XMage defaults to 0%, which shuts out anyone who has ever left a match early
+        options.setQuitRatio(100);
         options.setPassword(password);
 
         UUID roomId = session.getMainRoomId();

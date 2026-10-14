@@ -112,7 +112,7 @@ test('the table list and the lobby carry XMage\'s table information', async ({ b
   for (const key of ['id', 'name', 'controllerName', 'gameType', 'deckType', 'state', 'stateText', 'info', 'infoFull', 'seatsInfo', 'createTime', 'skillLevel', 'passworded', 'rated', 'limited', 'tournament', 'spectatorsAllowed', 'quitRatio', 'minimumRating', 'seats', 'games']) {
     expect(mine, `table.${key}`).toHaveProperty(key)
   }
-  expect(mine).toMatchObject({ gameType: 'Commander Two Player Duel', deckType: 'Commander', state: 'DUELING', tournament: false, limited: false, rated: false, passworded: false })
+  expect(mine).toMatchObject({ gameType: 'Commander Two Player Duel', deckType: 'Commander', state: 'DUELING', tournament: false, limited: false, rated: false, passworded: false, quitRatio: '100' })
   expect(mine.seats.map((seat: any) => seat.playerName).sort()).toEqual([table.a.name, table.b.name].sort())
   expect(mine.games).toHaveLength(1)
   for (const key of ['playerId', 'playerName', 'playerType', 'flag', 'history', 'generalRating', 'constructedRating', 'limitedRating']) expect(mine.seats[0], `seat.${key}`).toHaveProperty(key)
