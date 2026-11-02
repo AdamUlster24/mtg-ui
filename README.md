@@ -78,8 +78,9 @@ Only the host runs anything; the friend opens the link, enters the password and 
   tooltip says how many card types it holds.
 - Revealed cards, cards you look at, the hand of a player you control, exile piles made by a card and
   the companion zone open as lists on the left; they fold away and stay until you close them.
-- Hover any card for a large view: both halves of split and adventure cards, the other side of
-  double-faced cards, what your own face-down card really is, printed power/toughness when it was
+- Hover any card for a large view: both halves of split and adventure cards, art and rules for both faces
+  of double-faced cards (even before they transform), what your own face-down card really is, printed
+  power/toughness when it was
   changed, counters, keyword icons and XMage's notes (commander casts and damage, day/night, restrictions).
   `More ▾ → Hints…` collects all those notes in one panel.
 - The stack is on the right, oldest on top, the next thing to resolve at the bottom in full.

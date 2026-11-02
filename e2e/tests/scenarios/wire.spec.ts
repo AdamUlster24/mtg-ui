@@ -51,7 +51,7 @@ test('every field of cards and permanents reaches the browser', async ({ browser
     'id', 'set', 'number', 'usesVariousArt', 'gameObject', 'choosable', 'selected', 'name', 'displayName', 'displayFullName', 'imageFileName', 'imageNumber',
     'token', 'faceDown', 'typeLine', 'types', 'subTypes', 'superTypes', 'manaCost', 'manaValue', 'colors', 'frameColors', 'frameStyle', 'artRect', 'rarity',
     'rules', 'hints', 'power', 'toughness', 'loyalty', 'defense', 'startingLoyalty', 'startingDefense', 'counters', 'zone', 'objectType', 'isAbility',
-    'abilityType', 'paid', 'canTransform', 'transformed', 'split', 'flipCard', 'canAttack', 'canBlock', 'controlledByOwner', 'targets', 'parentId', 'pairedCard',
+    'abilityType', 'paid', 'canTransform', 'transformed', 'backFace', 'split', 'flipCard', 'canAttack', 'canBlock', 'controlledByOwner', 'targets', 'parentId', 'pairedCard',
     'bandedCards', 'alternateName', 'extraDeckCard', 'rotate', 'icons', 'basePower', 'baseToughness', 'colorIdentity', 'originalIsCopy', 'playable', 'playableAmount',
     // permanents
     'permanent', 'tapped', 'damage', 'summoningSick', 'phasedIn', 'flipped', 'copy', 'controlled', 'ownerName', 'controllerName', 'attachedTo',

@@ -7,7 +7,7 @@ export function imageUrls(card: Card): string[] {
   if (source.faceDown || !source.name) return []
   const name = encodeURIComponent(source.name)
   const set = encodeURIComponent(source.set ?? '')
-  const asCard = `/img/card?set=${set}&name=${name}&number=${encodeURIComponent(source.number ?? '')}${source.transformed ? '&back=1' : ''}`
+  const asCard = `/img/card?set=${set}&name=${name}&number=${encodeURIComponent(source.number ?? '')}${(source.backFace ?? source.transformed) ? '&back=1' : ''}`
   if (source.token || (source.commandKind && source.commandKind !== 'commander')) {
     // XMage knows tokens and emblems by an image name and number ("Treasure", 2)
     const image = encodeURIComponent(source.imageFileName || source.name.replace(/ Token$/, ''))

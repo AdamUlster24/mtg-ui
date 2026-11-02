@@ -39,6 +39,8 @@ export interface Card {
   paid?: boolean
   canTransform?: boolean
   transformed?: boolean
+  /** Printed back-face art, including a modal back face cast directly. */
+  backFace?: boolean
   split?: boolean
   flipCard?: boolean
   canAttack?: boolean

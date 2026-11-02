@@ -183,42 +183,52 @@ function Preview() {
   const hiddenKind = faceDownKind(card)
   // my own face-down cards: XMage tells me what they are
   const real = card.faceDown && card.original ? card.original : null
-  const other = card.secondFace
+  const other = (real ?? card).secondFace
   return (
-    <div className="preview" data-preview={card.name}>
-      <div className="preview-card">
-        <CardFace card={real ?? card} />
+    <div className={`preview${other ? ' preview-double' : ''}`} data-preview={card.name}>
+      <div className="preview-face">
+        <div className="preview-card">
+          <CardFace card={real ?? card} />
+        </div>
+        <div className="preview-text">
+          {hiddenKind && <div className="pv-flag">{hiddenKind}{real ? ` · really ${real.name}` : ''}</div>}
+          {card.faceDown && !real ? <div className="pv-type">A face-down card.</div> : <Details card={real ?? card} />}
+          {card.mutated && card.mutateView && <div className="pv-flag">Mutated with {card.mutateView.name}</div>}
+          {card.permanent && card.controlledByOwner === false && <div className="pv-flag">Owned by {card.ownerName || 'the opponent'}</div>}
+        </div>
       </div>
-      <div className="preview-text">
-        {hiddenKind && <div className="pv-flag">{hiddenKind}{real ? ` · really ${real.name}` : ''}</div>}
-        {card.faceDown && !real ? <div className="pv-type">A face-down card.</div> : <Details card={real ?? card} />}
-        {card.mutated && card.mutateView && <div className="pv-flag">Mutated with {card.mutateView.name}</div>}
-        {card.permanent && card.controlledByOwner === false && <div className="pv-flag">Owned by {card.ownerName || 'the opponent'}</div>}
-        {other && (
-          <div className="pv-other" data-preview-other={other.name}>
-            <small>{card.transformed ? 'Front side' : 'Other side'}</small>
+      {other && (
+        <div className="preview-face pv-other" data-preview-other={other.name}>
+          <div className="preview-card"><CardFace card={other} /></div>
+          <div className="preview-text">
+            <small>{(card.backFace ?? card.transformed) ? 'Front side' : 'Other side'}</small>
             <Details card={other} />
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }
 
 /** "Krenko did 6 combat damage to bob" style notes XMage keeps on commanders, as numbers per player */
 export function commanderDamage(game: GameView): { commander: string; player: string; damage: number }[] {
-  const out: { commander: string; player: string; damage: number }[] = []
+  const out = new Map<string, { commander: string; player: string; damage: number }>()
   for (const owner of game.players) {
     const commanders = [...owner.commandZone, ...owner.battlefield].filter((c) => c.commandKind === 'commander' || c.icons?.some((i) => i.type === 'COMMANDER'))
     for (const card of commanders) {
-      for (const line of [...card.rules, ...(card.hints ?? [])]) {
+      // XMage can attach a modal commander's damage notes to its front face while its back is in play.
+      const faces = [card, ...(card.secondFace ? [card.secondFace] : [])]
+      for (const line of faces.flatMap((face) => [...face.rules, ...(face.hints ?? [])])) {
         for (const m of plain(line).matchAll(/(\d+) combat damage to (?:player )?([^.,]+)/gi)) {
-          out.push({ commander: card.name, player: m[2].trim(), damage: Number(m[1]) })
+          const player = m[2].trim()
+          const key = `${card.id}:${player}`
+          const damage = Number(m[1])
+          if (damage > (out.get(key)?.damage ?? 0)) out.set(key, { commander: card.name, player, damage })
         }
       }
     }
   }
-  return out
+  return [...out.values()]
 }
 
 /** Day or night, when an effect has started the cycle (XMage reports it as a hint on daybound cards) */

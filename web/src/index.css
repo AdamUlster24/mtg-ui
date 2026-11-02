@@ -1283,16 +1283,36 @@ kbd {
 /* ---------------------------------------------------------------- preview */
 
 .preview {
+  --preview-width: min(23vw, 300px, 38vh);
   position: absolute;
   left: 1rem;
   top: 50%;
   transform: translateY(-50%);
-  width: min(23vw, 300px);
+  width: var(--preview-width);
   z-index: 70;
   pointer-events: none;
   display: grid;
   gap: 0.5rem;
   animation: pop 0.12s ease-out;
+}
+
+.preview-double {
+  width: calc(var(--preview-width) * 2 + 0.6rem);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.preview-face {
+  display: grid;
+  align-content: start;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.preview-double > .pv-other {
+  margin: 0;
+  padding: 0;
+  border: 0;
 }
 
 @keyframes pop {
@@ -1303,7 +1323,7 @@ kbd {
 }
 
 .preview-card {
-  --cw: min(23vw, 300px);
+  --cw: var(--preview-width);
   position: relative;
   width: var(--cw);
   height: calc(var(--cw) * 1.4);

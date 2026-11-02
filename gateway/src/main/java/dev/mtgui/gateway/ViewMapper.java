@@ -7,6 +7,10 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import mage.abilities.icon.CardIcon;
 import mage.choices.Choice;
+import mage.cards.Card;
+import mage.cards.DoubleFacedCard;
+import mage.cards.repository.CardInfo;
+import mage.cards.repository.CardRepository;
 import mage.players.PlayableObjectStats;
 import mage.players.PlayableObjectsList;
 import mage.util.MultiAmountMessage;
@@ -16,7 +20,9 @@ import java.io.Serializable;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Converts XMage view objects (mage.view.*) into the gateway's own JSON contract.
@@ -28,6 +34,27 @@ import java.util.UUID;
 final class ViewMapper {
 
     private static final String HINT_START = mage.abilities.hint.HintUtils.HINT_START_MARK;
+    private record PrintedFaces(CardView front, CardView back) {}
+    private static final Map<String, Optional<PrintedFaces>> PRINTED_FACES = new ConcurrentHashMap<>();
+
+    /** Older transforming cards omit the other face outside the battlefield. Only use public print data. */
+    private static PrintedFaces printedFaces(CardView view) {
+        if (view.isFaceDown() || view.isToken() || view.isAbility()
+                || view.getExpansionSetCode() == null || view.getCardNumber() == null) {
+            return null;
+        }
+        String key = view.getExpansionSetCode() + "/" + view.getCardNumber();
+        return PRINTED_FACES.computeIfAbsent(key, ignored -> {
+            CardInfo info = CardRepository.instance.findCard(view.getExpansionSetCode(), view.getCardNumber());
+            if (info == null || (!info.isDoubleFaced() && !info.isDoubleFacedCard())) {
+                return Optional.empty();
+            }
+            Card printed = info.createCard();
+            Card front = printed instanceof DoubleFacedCard ? ((DoubleFacedCard) printed).getLeftHalfCard() : printed;
+            Card back = printed instanceof DoubleFacedCard ? ((DoubleFacedCard) printed).getRightHalfCard() : printed.getSecondCardFace();
+            return back == null ? Optional.empty() : Optional.of(new PrintedFaces(new CardView(front), new CardView(back)));
+        }).orElse(null);
+    }
 
     private ViewMapper() {
     }
@@ -340,6 +367,11 @@ final class ViewMapper {
         o.addProperty("paid", c.isPaid());
         o.addProperty("canTransform", c.canTransform());
         o.addProperty("transformed", c.isTransformed());
+        PrintedFaces faces = printedFaces(c);
+        // A modal back face can be cast directly without ever becoming "transformed".
+        boolean printedBack = faces != null && faces.back().getName().equals(c.getName());
+        boolean printedFront = faces != null && faces.front().getName().equals(c.getName());
+        o.addProperty("backFace", printedBack || (faces == null && c.isTransformed()));
         o.addProperty("split", c.isSplitCard());
         o.addProperty("flipCard", c.isFlipCard());
         o.addProperty("canAttack", c.isCanAttack());
@@ -414,6 +446,8 @@ final class ViewMapper {
         if (depth < 2) {
             if (c.getSecondCardFace() != null) {
                 o.add("secondFace", card(c.getSecondCardFace(), null, depth + 1));
+            } else if (printedFront || printedBack) {
+                o.add("secondFace", card(printedBack ? faces.front() : faces.back(), null, depth + 1));
             }
             if (source != null) {
                 o.add("sourceCard", card(source, null, depth + 1));
