@@ -10,7 +10,7 @@
     <packaging>jar</packaging>
 
     <properties>
-        <!-- must match the version in ../../mage/pom.xml (installed to ~/.m2 by scripts/build-mage.sh) -->
+        <!-- scripts/build-mage.sh updates this after installing XMage into the local Maven repository -->
         <mage.version>1.4.63</mage.version>
         <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

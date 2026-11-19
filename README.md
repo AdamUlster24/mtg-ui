@@ -259,12 +259,14 @@ from `More ▾ → Test mode: run commands` while you have priority.
 
 ## Updating XMage
 
-Pull `../mage` and update `mage.version` in `gateway/pom.xml` if the version in `../mage/pom.xml` changed.
-Then rebuild XMage and start the gateway again to load the updated cards.
+Pull `../mage`, rebuild XMage, and start the gateway again to load the updated cards.
 
 ```bash
-scripts/build-mage.sh && scripts/run.sh
+git -C ../mage pull && scripts/build-mage.sh && scripts/run.sh
 ```
+
+After a successful XMage build, `scripts/build-mage.sh` updates `mage.version` in `gateway/pom.xml`
+if the Maven version changed.
 
 The gateway's Java code may need changes when XMage updates its network contract
 (`Mage.Common` classes such as `mage.view.*`, `MageServer`, and `ClientCallbackMethod`). `build-mage.sh` refreshes
