@@ -8,8 +8,16 @@ RUN_DIR="${RUN_DIR:-$ROOT/run}"
 XMAGE_PORT="${XMAGE_PORT:-17171}"
 export XMAGE_PORT
 
+# Use the gateway and dependencies built for the configured XMage version.
+MAGE_VERSION="$(sed -n 's/.*<mage\.version>\([^<]*\)<\/mage\.version>.*/\1/p' "$ROOT/gateway/pom.xml")"
+BUILD_DIR="$ROOT/gateway/target/$MAGE_VERSION"
+LIB_DIR="$BUILD_DIR/lib"
 if [ "${SKIP_BUILD:-0}" != "1" ]; then
     "$ROOT/mvnw" -q -B -f "$ROOT/gateway/pom.xml" package
+fi
+if [ ! -f "$BUILD_DIR/gateway-0.1.0.jar" ] || [ ! -f "$LIB_DIR/mage-server-$MAGE_VERSION.jar" ]; then
+    echo "Gateway build for XMage $MAGE_VERSION is missing. Run scripts/run.sh without SKIP_BUILD=1." >&2
+    exit 1
 fi
 
 if [ "${SKIP_BUILD:-0}" != "1" ] && [ "${SKIP_WEB:-0}" != "1" ]; then
@@ -29,7 +37,7 @@ if [ ! -f "$RUN_DIR/config/config.xml" ]; then
 fi
 export WEB_DIST="${WEB_DIST:-$ROOT/web/dist}"
 rm -f "$RUN_DIR"/plugins/*.jar
-for jar in "$ROOT"/gateway/target/lib/mage-{game,deck,player,tournament}-*.jar; do
+for jar in "$LIB_DIR"/mage-{game,deck,player,tournament}-*.jar; do
     name="$(basename "$jar")"
     cp "$jar" "$RUN_DIR/plugins/${name%-[0-9]*.jar}.jar"
 done
@@ -41,5 +49,5 @@ exec java -Xmx"${GATEWAY_HEAP:-3g}" \
     --add-opens java.base/java.lang=ALL-UNNAMED \
     --add-opens java.base/java.util=ALL-UNNAMED \
     --add-opens java.base/java.net=ALL-UNNAMED \
-    -cp "$ROOT/gateway/target/gateway-0.1.0.jar:$ROOT/gateway/target/lib/*" \
+    -cp "$BUILD_DIR/gateway-0.1.0.jar:$LIB_DIR/*" \
     dev.mtgui.gateway.GatewayMain "$@"

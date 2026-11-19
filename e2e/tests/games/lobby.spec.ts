@@ -35,6 +35,18 @@ test('the lobby explains what is wrong with a deck', async ({ browser }) => {
   await seat.context.close()
 })
 
+test('the lobby recognizes cards added in XMage 1.4.63 V2', async ({ browser }) => {
+  const seat = await openSeat(browser, PLAY_SERVER, uniqueName('eve'))
+  const { page } = seat
+  const list = ['Commander', '1 Scarlet Witch, Chaotic Avenger', '', 'Deck', '1 Extract Power', '49 Island', '49 Mountain']
+  await page.locator('.lobby textarea').fill(list.join('\n'))
+  await expect(page.locator('.deck-status.good')).toContainText('99 cards · Commander: Scarlet Witch, Chaotic Avenger')
+  await page.getByRole('button', { name: 'Create table' }).click()
+  await expect(page.locator('.seat.taken')).toHaveCount(1)
+  await page.getByRole('button', { name: 'Leave table' }).click()
+  await seat.context.close()
+})
+
 test('a list with reskinned card names and the commander set apart on the last line is understood', async ({ browser }) => {
   const seat = await openSeat(browser, PLAY_SERVER, uniqueName('eve'))
   const { page } = seat
@@ -48,8 +60,8 @@ test('a list with reskinned card names and the commander set apart on the last l
     await expect(status).toContainText(note)
   }
   // a real card XMage has no rules for is told apart from a name nobody knows
-  await page.locator('.lobby textarea').fill(list + '\n1 Galactus, Devourer of Worlds\n1 Definitely Not A Card')
-  await expect(status).toContainText('Not in XMage yet: Galactus, Devourer of Worlds')
+  await page.locator('.lobby textarea').fill(list + '\n1 Chaos Confetti\n1 Definitely Not A Card')
+  await expect(status).toContainText('Not in XMage yet: Chaos Confetti')
   await expect(status).toContainText('Unknown card: Definitely Not A Card')
   expect(seat.problems).toEqual([])
   await seat.context.close()

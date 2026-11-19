@@ -6,7 +6,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 MAGE_DIR="${MAGE_DIR:-$ROOT/../mage}"
 
-MAVEN_OPTS="${MAVEN_OPTS:--Xmx6g}" "$ROOT/mvnw" -q -B -f "$MAGE_DIR/pom.xml" install \
+# Recompile cards and plugins against the current engine after updating the checkout.
+MAVEN_OPTS="${MAVEN_OPTS:--Xmx6g}" "$ROOT/mvnw" -q -B -f "$MAGE_DIR/pom.xml" clean install \
     -DskipTests -Dmaven.javadoc.skip=true -pl Mage.Server -am
 "$ROOT/scripts/sync-token-images.sh"
 echo "XMage built from $(git -C "$MAGE_DIR" rev-parse --short HEAD)"

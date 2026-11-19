@@ -11,7 +11,7 @@
 
     <properties>
         <!-- must match the version in ../../mage/pom.xml (installed to ~/.m2 by scripts/build-mage.sh) -->
-        <mage.version>1.4.62</mage.version>
+        <mage.version>1.4.63</mage.version>
         <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
@@ -43,6 +43,7 @@
     </dependencies>
 
     <build>
+        <directory>${project.basedir}/target/${mage.version}</directory>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

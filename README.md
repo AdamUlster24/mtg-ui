@@ -259,16 +259,17 @@ from `More ▾ → Test mode: run commands` while you have priority.
 
 ## Updating XMage
 
+Pull `../mage` and update `mage.version` in `gateway/pom.xml` if the version in `../mage/pom.xml` changed.
+Then rebuild XMage and start the gateway again to load the updated cards.
+
 ```bash
-git -C ../mage pull && scripts/build-mage.sh && scripts/run.sh
+scripts/build-mage.sh && scripts/run.sh
 ```
 
-New and fixed cards need nothing else. The gateway only has to change when XMage changes its network
-contract (`Mage.Common`: `mage.view.*`, `MageServer`, `ClientCallbackMethod`); that shows up as a compile
-error in `gateway/`, mostly in `ViewMapper.java`. If the XMage version number changes, update `mage.version`
-in `gateway/pom.xml`. `build-mage.sh` also refreshes `gateway/src/main/resources/token-images.tsv`, the
-token-to-art table extracted from XMage's sources. `MAGE_COMMIT` records the XMage commit this was last
-built and tested against; run the tests after an update.
+The gateway's Java code may need changes when XMage updates its network contract
+(`Mage.Common` classes such as `mage.view.*`, `MageServer`, and `ClientCallbackMethod`). `build-mage.sh` refreshes
+`gateway/src/main/resources/token-images.tsv`, the token-to-art table extracted from XMage's sources.
+`MAGE_COMMIT` records the XMage commit this was last built and tested against.
 
 ## Layout
 
